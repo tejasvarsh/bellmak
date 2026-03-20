@@ -1,0 +1,302 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  CUSTOMER
+  SELLER
+  ADMIN
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  PROCESSING
+  SHIPPED
+  OUT_FOR_DELIVERY
+  DELIVERED
+  CANCELLED
+  RETURN_REQUESTED
+  RETURNED
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+  COD_PENDING_CONFIRMATION
+  COD_PAID_BY_CUSTOMER
+}
+
+enum PaymentMethod {
+  UPI
+  CARD
+  NETBANKING
+  EMI
+  WALLET
+  COD
+}
+
+enum KYCStatus {
+  PENDING
+  SUBMITTED
+  APPROVED
+  REJECTED
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String?   @unique
+  phone         String?   @unique
+  password      String?
+  name          String
+  avatar        String?
+  role          Role      @default(CUSTOMER)
+  isVerified    Boolean   @default(false)
+  isActive      Boolean   @default(true)
+  bellmakCoins  Int       @default(0)
+  googleId      String?   @unique
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  addresses     Address[]
+  orders        Order[]
+  reviews       Review[]
+  wishlist      Wishlist[]
+  seller        Seller?
+  refreshTokens RefreshToken[]
+  @@map("users")
+}
+
+model Seller {
+  id             String    @id @default(cuid())
+  userId         String    @unique
+  user           User      @relation(fields: [userId], references: [id])
+  businessName   String
+  gstin          String?
+  panNumber      String?
+  bankAccount    Json?
+  commissionRate Float     @default(10)
+  sellerRating   Float     @default(0)
+  totalSales     Int       @default(0)
+  isApproved     Boolean   @default(false)
+  kycStatus      KYCStatus @default(PENDING)
+  kycDocuments   Json?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  products       Product[]
+  liveStreams    LiveStream[]
+  @@map("sellers")
+}
+
+model Category {
+  id             String     @id @default(cuid())
+  name           String
+  slug           String     @unique
+  parentId       String?
+  parent         Category?  @relation("SubCategories", fields: [parentId], references: [id])
+  children       Category[] @relation("SubCategories")
+  image          String?
+  icon           String?
+  commissionRate Float      @default(10)
+  isActive       Boolean    @default(true)
+  isFeatured     Boolean    @default(false)
+  sortOrder      Int        @default(0)
+  createdAt      DateTime   @default(now())
+  products       Product[]
+  @@map("categories")
+}
+
+model Product {
+  id             String      @id @default(cuid())
+  title          String
+  slug           String      @unique
+  description    String
+  price          Float
+  mrp            Float
+  discount       Float       @default(0)
+  stock          Int         @default(0)
+  images         String[]
+  sellerId       String
+  seller         Seller      @relation(fields: [sellerId], references: [id])
+  categoryId     String
+  category       Category    @relation(fields: [categoryId], references: [id])
+  brand          String?
+  tags           String[]
+  specifications Json?
+  variants       Json?
+  avgRating      Float       @default(0)
+  totalReviews   Int         @default(0)
+  totalSales     Int         @default(0)
+  isFeatured     Boolean     @default(false)
+  isActive       Boolean     @default(true)
+  isApproved     Boolean     @default(false)
+  isAssured      Boolean     @default(false)
+  weight         Float?
+  dimensions     Json?
+  metaTitle      String?
+  metaDesc       String?
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+  orderItems     OrderItem[]
+  reviews        Review[]
+  wishlist       Wishlist[]
+  @@map("products")
+}
+
+model Order {
+  id                String        @id @default(cuid())
+  orderId           String        @unique
+  userId            String
+  user              User          @relation(fields: [userId], references: [id])
+  items             OrderItem[]
+  subtotal          Float
+  discount          Float         @default(0)
+  deliveryCharge    Float         @default(0)
+  coinsDiscount     Float         @default(0)
+  totalAmount       Float
+  couponCode        String?
+  coinsUsed         Int           @default(0)
+  paymentMethod     PaymentMethod
+  paymentStatus     PaymentStatus @default(PENDING)
+  razorpayOrderId   String?
+  razorpayPaymentId String?
+  status            OrderStatus   @default(PENDING)
+  shippingAddress   Json
+  trackingId        String?
+  deliveryPartner   String?
+  expectedDelivery  DateTime?
+  deliveredAt       DateTime?
+  cancelReason      String?
+  returnReason      String?
+  notes             String?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  @@map("orders")
+}
+
+model OrderItem {
+  id        String  @id @default(cuid())
+  orderId   String
+  order     Order   @relation(fields: [orderId], references: [id])
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
+  title     String
+  image     String
+  variant   Json?
+  quantity  Int
+  price     Float
+  mrp       Float
+  sellerId  String
+  @@map("order_items")
+}
+
+model Address {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id])
+  fullName     String
+  phone        String
+  addressLine1 String
+  addressLine2 String?
+  city         String
+  state        String
+  pincode      String
+  isDefault    Boolean  @default(false)
+  label        String   @default("HOME")
+  createdAt    DateTime @default(now())
+  @@map("addresses")
+}
+
+model Review {
+  id                 String   @id @default(cuid())
+  productId          String
+  product            Product  @relation(fields: [productId], references: [id])
+  userId             String
+  user               User     @relation(fields: [userId], references: [id])
+  rating             Int
+  title              String?
+  body               String?
+  images             String[]
+  isVerifiedPurchase Boolean  @default(false)
+  helpfulVotes       Int      @default(0)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  @@unique([productId, userId])
+  @@map("reviews")
+}
+
+model Wishlist {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  productId String
+  product   Product  @relation(fields: [productId], references: [id])
+  createdAt DateTime @default(now())
+  @@unique([userId, productId])
+  @@map("wishlists")
+}
+
+model Coupon {
+  id                   String    @id @default(cuid())
+  code                 String    @unique
+  discountType         String
+  discountValue        Float
+  minOrderValue        Float     @default(0)
+  maxUses              Int?
+  usedCount            Int       @default(0)
+  expiresAt            DateTime?
+  isActive             Boolean   @default(true)
+  applicableCategories String[]
+  createdAt            DateTime  @default(now())
+  @@map("coupons")
+}
+
+model Banner {
+  id        String   @id @default(cuid())
+  image     String
+  link      String?
+  title     String?
+  isActive  Boolean  @default(true)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  @@map("banners")
+}
+
+model RefreshToken {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  @@map("refresh_tokens")
+}
+
+model NewsletterSubscriber {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  createdAt DateTime @default(now())
+  @@map("newsletter_subscribers")
+}
+
+model LiveStream {
+  id          String    @id @default(cuid())
+  sellerId    String
+  seller      Seller    @relation(fields: [sellerId], references: [id])
+  title       String
+  description String    @default("")
+  channelName String    @unique
+  status      String    @default("LIVE")
+  productIds  String[]
+  viewerCount Int       @default(0)
+  thumbnail   String?
+  startedAt   DateTime  @default(now())
+  endedAt     DateTime?
+  createdAt   DateTime  @default(now())
+  @@map("live_streams")
+}
