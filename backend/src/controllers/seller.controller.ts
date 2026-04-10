@@ -4,7 +4,7 @@ import { AppError } from '../middleware/errorHandler'
 import { AuthRequest } from '../middleware/auth'
 import { sendResponse } from '../utils/helpers'
 
-// Helper — seller dhundo ya banao
+// ─── Helper ──────────────────────────────────────────────────
 const getOrCreateSeller = async (userId: string) => {
   let seller = await prisma.seller.findUnique({ where: { userId } })
   if (!seller) {
@@ -33,12 +33,8 @@ export const registerSeller = async (req: AuthRequest, res: Response, next: Next
     const seller = await prisma.seller.create({
       data: {
         userId: req.user!.id,
-        businessName,
-        gstin,
-        panNumber,
-        bankAccount,
-        kycStatus: 'APPROVED',
-        isApproved: true
+        businessName, gstin, panNumber, bankAccount,
+        kycStatus: 'APPROVED', isApproved: true
       }
     })
 
@@ -48,16 +44,13 @@ export const registerSeller = async (req: AuthRequest, res: Response, next: Next
     })
 
     sendResponse(res, 201, true, 'Seller registered successfully', seller)
-  } catch (err) {
-    next(err)
-  }
+  } catch (err) { next(err) }
 }
 
 // @route GET /api/seller/dashboard
 export const getSellerDashboard = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const seller = await getOrCreateSeller(req.user!.id)
-
     const today = new Date()
     today.setHours(0, 0, 0, 0)
 
@@ -67,7 +60,6 @@ export const getSellerDashboard = async (req: AuthRequest, res: Response, next: 
       prisma.orderItem.count({ where: { sellerId: seller.id } }),
       prisma.orderItem.count({ where: { sellerId: seller.id, order: { status: 'CONFIRMED' } } }),
       prisma.product.count({ where: { sellerId: seller.id, stock: { lte: 5 }, isActive: true } }),
-      // COD orders jahan customer ne confirm kiya but seller ne nahi kiya
       prisma.order.count({
         where: {
           items: { some: { sellerId: seller.id } },
@@ -105,7 +97,7 @@ export const getSellerDashboard = async (req: AuthRequest, res: Response, next: 
         pendingOrders, lowStockProducts,
         totalRevenue: Math.round(totalRevenue),
         avgRating: seller.sellerRating,
-        codPendingCount  // NEW: seller dashboard mein COD alert dikhega
+        codPendingCount
       },
       recentOrders: recentOrders.map(item => ({
         id: item.id,
@@ -118,16 +110,13 @@ export const getSellerDashboard = async (req: AuthRequest, res: Response, next: 
         createdAt: item.order.createdAt
       }))
     })
-  } catch (err) {
-    next(err)
-  }
+  } catch (err) { next(err) }
 }
 
 // @route GET /api/seller/products
 export const getSellerProducts = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const seller = await getOrCreateSeller(req.user!.id)
-
     const { page = '1', limit = '20', status } = req.query
     const pageNum = parseInt(page as string)
     const limitNum = parseInt(limit as string)
@@ -151,16 +140,13 @@ export const getSellerProducts = async (req: AuthRequest, res: Response, next: N
       page: pageNum, limit: limitNum, total,
       totalPages: Math.ceil(total / limitNum)
     })
-  } catch (err) {
-    next(err)
-  }
+  } catch (err) { next(err) }
 }
 
 // @route POST /api/seller/products
 export const createProduct = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const seller = await getOrCreateSeller(req.user!.id)
-
     const { title, description, price, mrp, stock, brand, category, images, specifications, isAssured } = req.body
 
     if (!title || !price || !mrp || !stock || !category) {
@@ -170,7 +156,6 @@ export const createProduct = async (req: AuthRequest, res: Response, next: NextF
     let categoryRecord = await prisma.category.findFirst({
       where: { name: { equals: category, mode: 'insensitive' } }
     })
-
     if (!categoryRecord) {
       categoryRecord = await prisma.category.create({
         data: {
@@ -181,41 +166,30 @@ export const createProduct = async (req: AuthRequest, res: Response, next: NextF
     }
 
     const discount = Math.round(((Number(mrp) - Number(price)) / Number(mrp)) * 100)
-
     const slug = title.toLowerCase()
       .replace(/[^a-z0-9\s]/g, '')
-      .replace(/\s+/g, '-')
-      + '-' + Date.now()
+      .replace(/\s+/g, '-') + '-' + Date.now()
 
     const product = await prisma.product.create({
       data: {
         title, slug,
         description: description || '',
-        price: Number(price),
-        mrp: Number(mrp),
-        discount,
-        stock: Number(stock),
-        brand: brand || '',
-        images: images || [],
-        specifications: specifications || {},
-        isAssured: isAssured || false,
-        isActive: true,
-        sellerId: seller.id,
-        categoryId: categoryRecord.id
+        price: Number(price), mrp: Number(mrp), discount,
+        stock: Number(stock), brand: brand || '',
+        images: images || [], specifications: specifications || {},
+        isAssured: isAssured || false, isActive: true,
+        sellerId: seller.id, categoryId: categoryRecord.id
       }
     })
 
     sendResponse(res, 201, true, 'Product created successfully', product)
-  } catch (err) {
-    next(err)
-  }
+  } catch (err) { next(err) }
 }
 
 // @route PUT /api/seller/products/:id
 export const updateProduct = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const seller = await getOrCreateSeller(req.user!.id)
-
     const product = await prisma.product.findFirst({
       where: { id: req.params.id, sellerId: seller.id }
     })
@@ -242,16 +216,13 @@ export const updateProduct = async (req: AuthRequest, res: Response, next: NextF
     })
 
     sendResponse(res, 200, true, 'Product updated successfully', updated)
-  } catch (err) {
-    next(err)
-  }
+  } catch (err) { next(err) }
 }
 
 // @route DELETE /api/seller/products/:id
 export const deleteProduct = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const seller = await getOrCreateSeller(req.user!.id)
-
     const product = await prisma.product.findFirst({
       where: { id: req.params.id, sellerId: seller.id }
     })
@@ -259,82 +230,123 @@ export const deleteProduct = async (req: AuthRequest, res: Response, next: NextF
 
     await prisma.product.delete({ where: { id: req.params.id } })
     sendResponse(res, 200, true, 'Product deleted successfully')
-  } catch (err) {
-    next(err)
-  }
+  } catch (err) { next(err) }
 }
 
 // @route GET /api/seller/orders
 export const getSellerOrders = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const seller = await getOrCreateSeller(req.user!.id)
-
-    const { page = '1', limit = '20' } = req.query
+    const { status, page = '1', limit = '20' } = req.query
     const pageNum = parseInt(page as string)
     const limitNum = parseInt(limit as string)
 
     const orderItems = await prisma.orderItem.findMany({
       where: { sellerId: seller.id },
-      skip: (pageNum - 1) * limitNum,
-      take: limitNum,
-      include: {
-        order: {
-          select: {
-            id: true, orderId: true, status: true,
-            shippingAddress: true, createdAt: true,
-            paymentMethod: true, paymentStatus: true,
-            user: { select: { name: true, phone: true } }
-          }
-        },
-        product: { select: { title: true, images: true } }
-      },
-      orderBy: { order: { createdAt: 'desc' } }
+      select: { orderId: true },
+      distinct: ['orderId']
     })
+    const orderIds = orderItems.map((oi: any) => oi.orderId)
 
-    const formatted = orderItems.map(item => ({
-      id: item.order.id,
-      orderId: item.order.orderId,
-      customerName: item.order.user.name,
-      amount: item.price * item.quantity,
-      status: item.order.status,
-      paymentMethod: item.order.paymentMethod,
-      paymentStatus: item.order.paymentStatus,
-      createdAt: item.order.createdAt,
-      city: (item.order.shippingAddress as any)?.city,
-      state: (item.order.shippingAddress as any)?.state,
-      items: [{
+    const where: any = { id: { in: orderIds } }
+    if (status && status !== 'ALL') where.status = status
+
+    const [orders, total] = await Promise.all([
+      prisma.order.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        skip: (pageNum - 1) * limitNum,
+        take: limitNum,
+        include: {
+          user: { select: { name: true, email: true, phone: true } },
+          items: {
+            where: { sellerId: seller.id },
+            include: { product: { select: { title: true, images: true } } }
+          }
+        }
+      }),
+      prisma.order.count({ where })
+    ])
+
+    const formatted = orders.map((o: any) => ({
+      id: o.id,
+      orderId: o.orderId,
+      customerName: o.user?.name || 'Customer',
+      customerPhone: o.user?.phone || '',
+      amount: o.totalAmount,
+      status: o.status,
+      paymentMethod: o.paymentMethod,
+      paymentStatus: o.paymentStatus,
+      trackingId: o.trackingId || '',
+      deliveryPartner: o.deliveryPartner || '',
+      createdAt: o.createdAt,
+      city: (o.shippingAddress as any)?.city || '',
+      state: (o.shippingAddress as any)?.state || '',
+      shippingAddress: o.shippingAddress,
+      items: o.items.map((item: any) => ({
         id: item.id,
         title: item.title,
         quantity: item.quantity,
         price: item.price,
         image: item.image
-      }]
+      }))
     }))
 
-    sendResponse(res, 200, true, 'Orders fetched', formatted)
-  } catch (err) {
-    next(err)
-  }
+    sendResponse(res, 200, true, 'Seller orders fetched', formatted, {
+      page: pageNum, limit: limitNum, total,
+      totalPages: Math.ceil(total / limitNum)
+    })
+  } catch (err) { next(err) }
 }
 
 // @route PATCH /api/seller/orders/:id/status
 export const updateOrderStatus = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const { status } = req.body
-    const validStatuses = ['CONFIRMED', 'PROCESSING', 'SHIPPED', 'DELIVERED']
-    if (!validStatuses.includes(status)) {
-      throw new AppError('Invalid status', 400)
+    const { status, trackingId, deliveryPartner } = req.body
+    const seller = await getOrCreateSeller(req.user!.id)
+
+    const order = await prisma.order.findUnique({
+      where: { id: req.params.id },
+      include: { items: true }
+    })
+    if (!order) throw new AppError('Order not found', 404)
+
+    const sellerOwnsItem = order.items.some((item: any) => item.sellerId === seller.id)
+    if (!sellerOwnsItem) throw new AppError('Unauthorized', 403)
+
+    const validNext: Record<string, string[]> = {
+      PENDING:          ['CONFIRMED', 'CANCELLED'],
+      CONFIRMED:        ['PROCESSING', 'CANCELLED'],
+      PROCESSING:       ['SHIPPED', 'CANCELLED'],
+      SHIPPED:          ['OUT_FOR_DELIVERY', 'DELIVERED'],
+      OUT_FOR_DELIVERY: ['DELIVERED']
     }
 
-    const order = await prisma.order.update({
-      where: { id: req.params.id },
-      data: { status }
-    })
+    if (!validNext[order.status]?.includes(status)) {
+      throw new AppError(`Cannot change from ${order.status} to ${status}`, 400)
+    }
 
-    sendResponse(res, 200, true, 'Order status updated', order)
-  } catch (err) {
-    next(err)
-  }
+    const updateData: any = { status }
+    if (trackingId) updateData.trackingId = trackingId
+    if (deliveryPartner) updateData.deliveryPartner = deliveryPartner
+
+    if (status === 'DELIVERED') {
+      updateData.deliveredAt = new Date()
+      updateData.paymentStatus = order.paymentMethod === 'COD' ? 'COD_PENDING_CONFIRMATION' : 'PAID'
+    }
+
+    if (status === 'CANCELLED') {
+      for (const item of order.items) {
+        await prisma.product.update({
+          where: { id: item.productId },
+          data: { stock: { increment: item.quantity } }
+        })
+      }
+    }
+
+    await prisma.order.update({ where: { id: order.id }, data: updateData })
+    sendResponse(res, 200, true, `Order updated to ${status}`)
+  } catch (err) { next(err) }
 }
 
 // @route PUT /api/seller/orders/:id/ship
@@ -348,13 +360,10 @@ export const shipOrder = async (req: AuthRequest, res: Response, next: NextFunct
       data: { status: 'SHIPPED', trackingId, deliveryPartner: deliveryPartner || 'Standard' }
     })
     sendResponse(res, 200, true, 'Order marked as shipped', order)
-  } catch (err) {
-    next(err)
-  }
+  } catch (err) { next(err) }
 }
 
 // @route POST /api/seller/orders/:orderId/confirm-cod-received
-// Seller confirms: "Mujhe cash mil gaya"
 export const confirmCODReceived = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const seller = await getOrCreateSeller(req.user!.id)
@@ -365,29 +374,17 @@ export const confirmCODReceived = async (req: AuthRequest, res: Response, next: 
     })
     if (!order) throw new AppError('Order not found', 404)
 
-    // Check karo ki yeh order isi seller ka hai
-    const sellerOwnsItem = order.items.some(
-      (item: any) => item.sellerId === seller.id
-    )
-    if (!sellerOwnsItem) throw new AppError('Unauthorized — yeh order aapka nahi hai', 403)
+    const sellerOwnsItem = order.items.some((item: any) => item.sellerId === seller.id)
+    if (!sellerOwnsItem) throw new AppError('Unauthorized', 403)
 
-    if (order.paymentMethod !== 'COD') {
-      throw new AppError('Yeh COD order nahi hai', 400)
-    }
-
+    if (order.paymentMethod !== 'COD') throw new AppError('Yeh COD order nahi hai', 400)
     if (order.paymentStatus !== 'COD_PAID_BY_CUSTOMER') {
       throw new AppError('Customer ne abhi payment confirm nahi ki hai', 400)
     }
 
-    await prisma.order.update({
-      where: { id: order.id },
-      data: { paymentStatus: 'PAID' }
-    })
-
-    sendResponse(res, 200, true, 'COD payment received confirmed! Order complete. ✅')
-  } catch (err) {
-    next(err)
-  }
+    await prisma.order.update({ where: { id: order.id }, data: { paymentStatus: 'PAID' } })
+    sendResponse(res, 200, true, 'COD payment confirmed! Order complete. ✅')
+  } catch (err) { next(err) }
 }
 
 // @route GET /api/seller/payments
@@ -410,9 +407,7 @@ export const getSellerPayments = async (req: AuthRequest, res: Response, next: N
       totalEarnings: Math.round(totalEarnings),
       commissionRate: seller.commissionRate
     })
-  } catch (err) {
-    next(err)
-  }
+  } catch (err) { next(err) }
 }
 
 // @route PUT /api/seller/profile
@@ -423,7 +418,5 @@ export const updateSellerProfile = async (req: AuthRequest, res: Response, next:
       data: req.body
     })
     sendResponse(res, 200, true, 'Profile updated', seller)
-  } catch (err) {
-    next(err)
-  }
+  } catch (err) { next(err) }
 }

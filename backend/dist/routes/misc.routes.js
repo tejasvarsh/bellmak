@@ -1,0 +1,11 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const misc_controller_1 = require("../controllers/misc.controller");
+const router = (0, express_1.Router)();
+router.get('/banners', misc_controller_1.getBanners);
+router.get('/coupons/validate/:code', misc_controller_1.validateCoupon);
+router.get('/pincode/:pincode', misc_controller_1.checkPincode);
+router.post('/newsletter', misc_controller_1.subscribeNewsletter);
+router.post('/contact', misc_controller_1.contactForm);
+exports.default = router;

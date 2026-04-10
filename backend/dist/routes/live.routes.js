@@ -1,0 +1,14 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const live_controller_1 = require("../controllers/live.controller");
+const auth_1 = require("../middleware/auth");
+const router = (0, express_1.Router)();
+router.get('/', live_controller_1.getLiveStreams);
+router.get('/recordings', live_controller_1.getRecordings);
+router.get('/:streamId', live_controller_1.getStream);
+router.post('/start', auth_1.protect, auth_1.sellerOnly, live_controller_1.startStream);
+router.post('/:streamId/end', auth_1.protect, auth_1.sellerOnly, live_controller_1.endStream);
+router.put('/:streamId/viewers', live_controller_1.updateViewers);
+router.delete('/:streamId', auth_1.protect, auth_1.sellerOnly, live_controller_1.deleteStream);
+exports.default = router;

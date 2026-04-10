@@ -1,27 +1,27 @@
 'use client'
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import api from '@/lib/api'
 import ProductCard from '@/components/product/ProductCard'
 import { Search, SlidersHorizontal, X } from 'lucide-react'
 
 const SORT_OPTIONS = [
-  { label: 'Relevance', value: '' },
-  { label: 'Price: Low to High', value: 'price_asc' },
-  { label: 'Price: High to Low', value: 'price_desc' },
-  { label: 'Newest First', value: 'newest' },
-  { label: 'Top Rated', value: 'rating' },
+  { label: 'Relevance',           value: ''          },
+  { label: 'Price: Low to High',  value: 'price_asc' },
+  { label: 'Price: High to Low',  value: 'price_desc'},
+  { label: 'Newest First',        value: 'newest'    },
+  { label: 'Top Rated',           value: 'rating'    },
 ]
 
-export default function SearchPage() {
+function SearchContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const query = searchParams.get('q') || ''
 
   const [products, setProducts] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
-  const [total, setTotal] = useState(0)
-  const [sort, setSort] = useState('')
+  const [loading,  setLoading]  = useState(true)
+  const [total,    setTotal]    = useState(0)
+  const [sort,     setSort]     = useState('')
   const [inputVal, setInputVal] = useState(query)
 
   const fetchResults = useCallback(async (q: string, s: string) => {
@@ -48,20 +48,14 @@ export default function SearchPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-
-      {/* Search bar */}
       <div className="bg-white border-b border-gray-100 py-4 sticky top-0 z-10 shadow-sm">
         <div className="max-w-5xl mx-auto px-4">
           <form onSubmit={handleSearch} className="flex items-center gap-3">
             <div className="flex-1 flex items-center rounded-xl border border-gray-200 focus-within:border-[#F97316] focus-within:ring-2 focus-within:ring-orange-50 overflow-hidden transition-all">
               <Search size={16} className="ml-4 text-gray-400 flex-shrink-0" />
-              <input
-                type="text"
-                value={inputVal}
-                onChange={e => setInputVal(e.target.value)}
+              <input type="text" value={inputVal} onChange={e => setInputVal(e.target.value)}
                 placeholder="Search for products, brands..."
-                className="flex-1 px-3 py-3 text-sm outline-none bg-transparent"
-              />
+                className="flex-1 px-3 py-3 text-sm outline-none bg-transparent" />
               {inputVal && (
                 <button type="button" onClick={() => setInputVal('')} className="mr-2 text-gray-400 hover:text-gray-600">
                   <X size={14} />
@@ -76,30 +70,22 @@ export default function SearchPage() {
       </div>
 
       <div className="max-w-5xl mx-auto px-4 py-6">
-
-        {/* Results header */}
         {query && (
           <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
-            <div>
-              <p className="text-sm text-gray-500">
-                {loading ? 'Searching...' : `${total} results for `}
-                {!loading && <span className="font-black text-gray-900">"{query}"</span>}
-              </p>
-            </div>
+            <p className="text-sm text-gray-500">
+              {loading ? 'Searching...' : `${total} results for `}
+              {!loading && <span className="font-black text-gray-900">"{query}"</span>}
+            </p>
             <div className="flex items-center gap-2">
               <SlidersHorizontal size={14} className="text-gray-400" />
-              <select
-                value={sort}
-                onChange={e => setSort(e.target.value)}
-                className="border border-gray-200 rounded-lg px-3 py-1.5 text-xs font-bold text-gray-700 outline-none focus:border-[#F97316] bg-white"
-              >
+              <select value={sort} onChange={e => setSort(e.target.value)}
+                className="border border-gray-200 rounded-lg px-3 py-1.5 text-xs font-bold text-gray-700 outline-none focus:border-[#F97316] bg-white">
                 {SORT_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
               </select>
             </div>
           </div>
         )}
 
-        {/* Empty state */}
         {!query && (
           <div className="text-center py-24">
             <div className="text-6xl mb-4">🔍</div>
@@ -108,7 +94,6 @@ export default function SearchPage() {
           </div>
         )}
 
-        {/* Loading */}
         {loading && query && (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
             {[...Array(8)].map((_, i) => (
@@ -123,12 +108,11 @@ export default function SearchPage() {
           </div>
         )}
 
-        {/* No results */}
         {!loading && query && products.length === 0 && (
           <div className="text-center py-24">
             <div className="text-6xl mb-4">😔</div>
             <h2 className="text-xl font-black text-gray-900 mb-2">No results found</h2>
-            <p className="text-gray-400 text-sm mb-6">Try a different search term or browse our categories</p>
+            <p className="text-gray-400 text-sm mb-6">Try a different search term or browse categories</p>
             <div className="flex items-center justify-center gap-3 flex-wrap">
               {['Mobiles', 'Fashion', 'Electronics', 'Home', 'Books'].map(cat => (
                 <a key={cat} href={`/category/${cat.toLowerCase()}`}
@@ -140,7 +124,6 @@ export default function SearchPage() {
           </div>
         )}
 
-        {/* Results grid */}
         {!loading && products.length > 0 && (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
             {products.map(p => <ProductCard key={p.id} product={p} />)}
@@ -148,5 +131,17 @@ export default function SearchPage() {
         )}
       </div>
     </div>
+  )
+}
+
+export default function SearchPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="animate-spin w-8 h-8 border-4 border-orange-500 border-t-transparent rounded-full" />
+      </div>
+    }>
+      <SearchContent />
+    </Suspense>
   )
 }
