@@ -4,50 +4,71 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useAuthStore } from '@/lib/store'
 import api from '@/lib/api'
-import { Plus, Edit, Trash2, Eye, Search } from 'lucide-react'
+import { Plus, Edit, Trash2, Eye, Search, Package, TrendingUp, AlertTriangle } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 export default function SellerProducts() {
   const { user, isLoggedIn } = useAuthStore()
   const router = useRouter()
-  const [products, setProducts] = useState([])
+  const [products, setProducts] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
+  const [filter, setFilter] = useState('all')
 
   useEffect(() => {
     if (!isLoggedIn) { router.push('/login'); return }
     fetchProducts()
-  }, [])
+  }, [isLoggedIn])
 
   const fetchProducts = async () => {
     try {
-      const res = await api.get('/seller/products')
+      setLoading(true)
+      const res = await api.get('/seller/products?limit=100')
       setProducts(res.data.data || [])
-    } catch {
-      setProducts(DUMMY_PRODUCTS as any)
+    } catch (err: any) {
+      toast.error('Products load nahi hue')
+      setProducts([])
     } finally {
       setLoading(false)
     }
   }
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Delete this product?')) return
+    if (!confirm('Is product ko delete karna chahte ho?')) return
     try {
       await api.delete(`/seller/products/${id}`)
-      setProducts(products.filter((p: any) => p.id !== id))
-      toast.success('Product deleted!')
+      setProducts(prev => prev.filter((p: any) => p.id !== id))
+      toast.success('Product delete ho gaya!')
     } catch {
-      toast.error('Failed to delete!')
+      toast.error('Delete nahi hua, dobara try karo')
     }
   }
 
-  const formatPrice = (price: number) => new Intl.NumberFormat('en-IN', {
-    style: 'currency', currency: 'INR', minimumFractionDigits: 0
-  }).format(price)
+  const handleToggleActive = async (product: any) => {
+    try {
+      await api.put(`/seller/products/${product.id}`, { isActive: !product.isActive })
+      setProducts(prev => prev.map((p: any) =>
+        p.id === product.id ? { ...p, isActive: !p.isActive } : p
+      ))
+      toast.success(product.isActive ? 'Product hidden kar diya' : 'Product live kar diya!')
+    } catch {
+      toast.error('Status update nahi hua')
+    }
+  }
 
-  const filtered = (products as any[]).filter((p: any) =>
-    p.title.toLowerCase().includes(search.toLowerCase())
-  )
+  const fmt = (n: number) => `₹${n.toLocaleString('en-IN')}`
+
+  const filtered = products.filter((p: any) => {
+    const matchSearch = p.title.toLowerCase().includes(search.toLowerCase())
+    const matchFilter = filter === 'all' || (filter === 'active' && p.isActive) || (filter === 'inactive' && !p.isActive) || (filter === 'low' && p.stock <= 5)
+    return matchSearch && matchFilter
+  })
+
+  const stats = {
+    total: products.length,
+    active: products.filter(p => p.isActive).length,
+    lowStock: products.filter(p => p.stock <= 5).length,
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -61,121 +82,212 @@ export default function SellerProducts() {
           </div>
           <Link
             href="/seller/products/new"
-            className="bg-primary text-white px-4 py-2.5 rounded-xl font-semibold text-sm flex items-center gap-2 hover:bg-primary-dark transition-colors"
+            className="bg-orange-500 text-white px-4 py-2.5 rounded-xl font-bold text-sm flex items-center gap-2 hover:bg-orange-600 transition-colors shadow-md"
           >
             <Plus size={18} />
             Add Product
           </Link>
         </div>
 
-        {/* Search */}
-        <div className="bg-white rounded-2xl shadow-sm p-4 mb-6 flex items-center gap-3">
-          <Search size={18} className="text-gray-400" />
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search your products..."
-            className="flex-1 outline-none text-sm text-gray-700"
-          />
+        {/* Stats */}
+        <div className="grid grid-cols-3 gap-4 mb-6">
+          <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center">
+                <Package size={18} className="text-blue-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-black text-gray-800">{stats.total}</p>
+                <p className="text-xs text-gray-500">Total Products</p>
+              </div>
+            </div>
+          </div>
+          <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-green-50 rounded-xl flex items-center justify-center">
+                <TrendingUp size={18} className="text-green-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-black text-gray-800">{stats.active}</p>
+                <p className="text-xs text-gray-500">Active / Live</p>
+              </div>
+            </div>
+          </div>
+          <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-red-50 rounded-xl flex items-center justify-center">
+                <AlertTriangle size={18} className="text-red-500" />
+              </div>
+              <div>
+                <p className="text-2xl font-black text-gray-800">{stats.lowStock}</p>
+                <p className="text-xs text-gray-500">Low Stock</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Search + Filter */}
+        <div className="bg-white rounded-2xl shadow-sm p-4 mb-6 flex flex-col sm:flex-row items-center gap-3">
+          <div className="flex items-center gap-3 flex-1 w-full">
+            <Search size={18} className="text-gray-400 flex-shrink-0" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Product search karo..."
+              className="flex-1 outline-none text-sm text-gray-700"
+            />
+          </div>
+          <div className="flex gap-2 flex-shrink-0">
+            {[
+              { key: 'all', label: 'All' },
+              { key: 'active', label: 'Active' },
+              { key: 'inactive', label: 'Hidden' },
+              { key: 'low', label: 'Low Stock' },
+            ].map(f => (
+              <button
+                key={f.key}
+                onClick={() => setFilter(f.key)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                  filter === f.key
+                    ? 'bg-orange-500 text-white'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Products Table */}
-        <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b">
-                <tr>
-                  <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase">Product</th>
-                  <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase">Price</th>
-                  <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase">Stock</th>
-                  <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase">Rating</th>
-                  <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase">Status</th>
-                  <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {filtered.map((product: any) => (
-                  <tr key={product.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        <img
-                          src={product.images?.[0] || 'https://via.placeholder.com/50'}
-                          alt={product.title}
-                          className="w-12 h-12 rounded-xl object-contain bg-gray-50 p-1"
-                        />
-                        <div>
-                          <p className="font-medium text-gray-800 text-sm line-clamp-1 max-w-[200px]">{product.title}</p>
-                          <p className="text-xs text-gray-500">{product.category?.name}</p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <p className="font-semibold text-gray-800 text-sm">{formatPrice(product.price)}</p>
-                      <p className="text-xs text-gray-400 line-through">{formatPrice(product.mrp)}</p>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className={`text-sm font-semibold ${product.stock < 10 ? 'text-red-500' : 'text-green-600'}`}>
-                        {product.stock}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="bg-green-100 text-green-700 text-xs px-2 py-1 rounded-full font-medium">
-                        ⭐ {product.avgRating || '0.0'}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className={`text-xs px-2 py-1 rounded-full font-medium ${
-                        product.isActive ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
-                      }`}>
-                        {product.isActive ? 'Active' : 'Inactive'}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2">
-                        <Link
-                          href={`/products/${product.slug}`}
-                          className="p-2 text-gray-400 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-colors"
-                        >
-                          <Eye size={16} />
-                        </Link>
-                        <Link
-                          href={`/seller/products/edit/${product.id}`}
-                          className="p-2 text-gray-400 hover:text-primary hover:bg-orange-50 rounded-lg transition-colors"
-                        >
-                          <Edit size={16} />
-                        </Link>
-                        <button
-                          onClick={() => handleDelete(product.id)}
-                          className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
-                    </td>
+        <div className="bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-100">
+          {loading ? (
+            <div className="p-8">
+              {[...Array(5)].map((_, i) => (
+                <div key={i} className="flex items-center gap-4 py-4 border-b border-gray-50 animate-pulse">
+                  <div className="w-14 h-14 bg-gray-100 rounded-xl" />
+                  <div className="flex-1 space-y-2">
+                    <div className="h-3 bg-gray-100 rounded w-3/4" />
+                    <div className="h-3 bg-gray-100 rounded w-1/4" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-20 text-gray-400">
+              <span className="text-5xl mb-4">📦</span>
+              <p className="font-bold text-gray-600 text-lg">Koi product nahi mila</p>
+              <p className="text-sm mt-1 mb-4">Abhi apna pehla product add karo</p>
+              <Link
+                href="/seller/products/new"
+                className="bg-orange-500 text-white px-6 py-2.5 rounded-xl font-bold text-sm hover:bg-orange-600 transition-colors"
+              >
+                + Add Product
+              </Link>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50 border-b border-gray-100">
+                  <tr>
+                    <th className="text-left px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Product</th>
+                    <th className="text-left px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Price</th>
+                    <th className="text-left px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Stock</th>
+                    <th className="text-left px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Rating</th>
+                    <th className="text-left px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
+                    <th className="text-left px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-
-            {filtered.length === 0 && (
-              <div className="text-center py-16">
-                <p className="text-4xl mb-3">🛍️</p>
-                <p className="font-semibold text-gray-700">No products found</p>
-                <Link href="/seller/products/new" className="text-primary text-sm mt-2 inline-block hover:underline">
-                  Add your first product →
-                </Link>
-              </div>
-            )}
-          </div>
+                </thead>
+                <tbody className="divide-y divide-gray-50">
+                  {filtered.map((product: any) => (
+                    <tr key={product.id} className="hover:bg-orange-50/30 transition-colors">
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-14 h-14 rounded-xl overflow-hidden bg-gray-50 border border-gray-100 flex-shrink-0">
+                            <img
+                              src={product.images?.[0] || 'https://placehold.co/56x56/f1f5f9/94a3b8?text=No+Img'}
+                              alt={product.title}
+                              className="w-full h-full object-contain p-1"
+                            />
+                          </div>
+                          <div>
+                            <p className="font-bold text-gray-800 text-sm line-clamp-2 max-w-[220px]">{product.title}</p>
+                            <p className="text-xs text-gray-400 mt-0.5">{product.category?.name || 'Uncategorized'}</p>
+                            {product.brand && <p className="text-xs text-gray-400">{product.brand}</p>}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <p className="font-bold text-gray-800 text-sm">{fmt(product.price)}</p>
+                        <p className="text-xs text-gray-400 line-through">{fmt(product.mrp)}</p>
+                        <span className="text-xs text-green-600 font-bold">{product.discount}% off</span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className={`text-sm font-bold px-2.5 py-1 rounded-lg ${
+                          product.stock === 0
+                            ? 'bg-red-100 text-red-600'
+                            : product.stock <= 5
+                            ? 'bg-amber-100 text-amber-700'
+                            : 'bg-green-100 text-green-700'
+                        }`}>
+                          {product.stock === 0 ? 'Out of Stock' : `${product.stock} left`}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-1">
+                          <span className="text-yellow-400">⭐</span>
+                          <span className="text-sm font-bold text-gray-700">{product.avgRating?.toFixed(1) || '0.0'}</span>
+                          <span className="text-xs text-gray-400">({product.totalReviews || 0})</span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <button
+                          onClick={() => handleToggleActive(product)}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                            product.isActive
+                              ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                              : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                          }`}
+                        >
+                          {product.isActive ? '🟢 Live' : '⚫ Hidden'}
+                        </button>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-2">
+                          <Link
+                            href={`/products/${product.slug}`}
+                            target="_blank"
+                            className="w-8 h-8 bg-blue-50 hover:bg-blue-100 rounded-lg flex items-center justify-center transition-colors"
+                            title="View on site"
+                          >
+                            <Eye size={14} className="text-blue-600" />
+                          </Link>
+                          <Link
+                            href={`/seller/products/edit/${product.id}`}
+                            className="w-8 h-8 bg-orange-50 hover:bg-orange-100 rounded-lg flex items-center justify-center transition-colors"
+                            title="Edit product"
+                          >
+                            <Edit size={14} className="text-orange-600" />
+                          </Link>
+                          <button
+                            onClick={() => handleDelete(product.id)}
+                            className="w-8 h-8 bg-red-50 hover:bg-red-100 rounded-lg flex items-center justify-center transition-colors"
+                            title="Delete product"
+                          >
+                            <Trash2 size={14} className="text-red-500" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
+
       </div>
     </div>
   )
 }
-
-const DUMMY_PRODUCTS = [
-  { id: '1', title: 'Samsung Galaxy S23 Ultra 5G', price: 89999, mrp: 124999, stock: 15, avgRating: 4.6, isActive: true, images: ['https://via.placeholder.com/50?text=S23'], category: { name: 'Mobiles' }, slug: 'samsung-galaxy-s23' },
-  { id: '2', title: 'Sony WH-1000XM5 Headphones', price: 24990, mrp: 34990, stock: 8, avgRating: 4.5, isActive: true, images: ['https://via.placeholder.com/50?text=Sony'], category: { name: 'Electronics' }, slug: 'sony-headphones' },
-  { id: '3', title: 'Nike Air Max 270', price: 8995, mrp: 12995, stock: 3, avgRating: 4.3, isActive: false, images: ['https://via.placeholder.com/50?text=Nike'], category: { name: 'Fashion' }, slug: 'nike-airmax' },
-]

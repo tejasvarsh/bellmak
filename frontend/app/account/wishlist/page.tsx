@@ -1,134 +1,163 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
-import { useAuthStore, useWishlistStore, useCartStore } from '@/lib/store'
-import toast from 'react-hot-toast'
-import { Heart, ShoppingCart, Trash2, ArrowLeft, ShoppingBag, Star } from 'lucide-react'
 import Link from 'next/link'
+import Image from 'next/image'
+import { useAuthStore } from '@/lib/store'
+import api from '@/lib/api'
+import toast from 'react-hot-toast'
+import { Trash2, ShoppingCart, Heart, ArrowLeft, Package } from 'lucide-react'
+
+interface WishlistItem {
+  id: string
+  productId: string
+  title: string
+  price: number
+  originalPrice?: number
+  images: string[]
+  slug: string
+}
 
 export default function WishlistPage() {
-  const { isLoggedIn } = useAuthStore()
-  const { items, removeItem, clearWishlist } = useWishlistStore()
-  const { addItem } = useCartStore()
-  const router = useRouter()
-  const [removing, setRemoving] = useState<string | null>(null)
-  const [showClearConfirm, setShowClearConfirm] = useState(false)
+  const { user, isLoggedIn } = useAuthStore()
+  const [items, setItems] = useState<WishlistItem[]>([])
+  const [loading, setLoading] = useState(true)
+  const [removingId, setRemovingId] = useState<string | null>(null)
 
-  useEffect(() => { if (!isLoggedIn) router.push('/login') }, [])
+  // Fetch wishlist
+  useEffect(() => {
+    if (!isLoggedIn) return
+    const fetchWishlist = async () => {
+      try {
+        const res = await api.get('/wishlist')
+        setItems(res.data.data || [])
+      } catch (err) {
+        console.error(err)
+        toast.error('Wishlist load nahi ho paaya')
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchWishlist()
+  }, [isLoggedIn])
 
-  const handleAddToCart = (item: any) => {
-    addItem({ id: item.id, name: item.name, price: item.price, image: item.image, slug: item.slug, stock: 99 })
-    toast.success('Added to cart!')
+  const handleRemove = async (productId: string) => {
+    setRemovingId(productId)
+    try {
+      await api.delete(`/wishlist/${productId}`)
+      setItems(prev => prev.filter(item => item.productId !== productId))
+      toast.success('Removed from wishlist')
+    } catch (err) {
+      toast.error('Failed to remove')
+    } finally {
+      setRemovingId(null)
+    }
   }
 
-  const handleRemove = (id: string) => {
-    setRemoving(id)
-    setTimeout(() => { removeItem(id); setRemoving(null); toast.success('Removed from wishlist') }, 300)
+  const handleAddToCart = async (item: WishlistItem) => {
+    try {
+      await api.post('/cart', { productId: item.productId, quantity: 1 })
+      toast.success(`${item.title} added to cart!`)
+    } catch (err) {
+      toast.error('Failed to add to cart')
+    }
   }
 
-  const handleMoveAllToCart = () => {
-    items.forEach(item => addItem({ id: item.id, name: item.name, price: item.price, image: item.image, slug: item.slug, stock: 99 }))
-    toast.success(`${items.length} items added to cart!`)
+  if (!isLoggedIn) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <Heart size={60} className="mx-auto text-gray-300 mb-4" />
+          <h2 className="text-2xl font-bold mb-2">Please login first</h2>
+          <Link href="/login" className="text-red-500 hover:underline">Go to Login →</Link>
+        </div>
+      </div>
+    )
   }
-
-  const handleClearAll = () => { clearWishlist(); setShowClearConfirm(false); toast.success('Wishlist cleared') }
-
-  const discountPct = (item: any) => item.originalPrice ? Math.round(((item.originalPrice - item.price) / item.originalPrice) * 100) : 0
 
   return (
-    <div className="min-h-screen bg-[#f1f3f6]">
-      <div className="max-w-5xl mx-auto px-4 py-6">
-        <Link href="/account" className="inline-flex items-center gap-2 text-sm font-bold text-gray-500 hover:text-[#2874f0] mb-5 transition-colors">
-          <ArrowLeft size={16} /> Back to Account
-        </Link>
-
-        {/* Header */}
-        <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
-          <div>
-            <h1 className="text-xl font-black text-gray-900 flex items-center gap-2">
-              <Heart className="text-red-500 fill-red-500" size={20} /> My Wishlist
-            </h1>
-            <p className="text-sm text-gray-400 mt-0.5">{items.length} item{items.length !== 1 ? 's' : ''} saved</p>
+    <div className="min-h-screen bg-gray-50 pb-12">
+      <div className="max-w-7xl mx-auto px-4 pt-8">
+        <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center gap-3">
+            <Heart className="text-red-500" size={28} />
+            <h1 className="text-3xl font-black text-gray-900">My Wishlist</h1>
+            <span className="text-sm font-medium bg-white px-3 py-1 rounded-2xl border">{items.length} items</span>
           </div>
-          {items.length > 0 && (
-            <div className="flex gap-2">
-              <button onClick={handleMoveAllToCart}
-                className="flex items-center gap-2 px-4 py-2.5 bg-[#fb641b] text-white font-bold text-sm rounded-xl hover:bg-orange-600 transition-colors">
-                <ShoppingCart size={15} /> Add All to Cart
-              </button>
-              <button onClick={() => setShowClearConfirm(true)}
-                className="px-3 py-2.5 border border-red-200 text-red-500 font-bold text-sm rounded-xl hover:bg-red-50 transition-colors">
-                Clear All
-              </button>
-            </div>
-          )}
+          <Link href="/account" className="flex items-center gap-2 text-gray-500 hover:text-gray-700">
+            <ArrowLeft size={18} /> Back to Account
+          </Link>
         </div>
 
-        {/* Clear Confirm */}
-        {showClearConfirm && (
-          <div className="bg-red-50 border border-red-200 rounded-2xl p-4 mb-4 flex items-center gap-3">
-            <p className="flex-1 text-sm text-red-700 font-medium">Remove all {items.length} items from wishlist?</p>
-            <button onClick={handleClearAll} className="px-4 py-2 bg-red-500 text-white text-sm font-bold rounded-xl hover:bg-red-600">Yes, Clear</button>
-            <button onClick={() => setShowClearConfirm(false)} className="px-4 py-2 bg-white text-gray-600 text-sm font-bold rounded-xl border border-gray-200 hover:bg-gray-50">Cancel</button>
+        {loading ? (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            {[...Array(8)].map((_, i) => (
+              <div key={i} className="bg-white rounded-3xl overflow-hidden animate-pulse">
+                <div className="aspect-square bg-gray-200" />
+                <div className="p-4 space-y-3">
+                  <div className="h-4 bg-gray-200 rounded w-3/4" />
+                  <div className="h-4 bg-gray-200 rounded w-1/2" />
+                </div>
+              </div>
+            ))}
           </div>
-        )}
-
-        {/* Empty */}
-        {items.length === 0 ? (
-          <div className="bg-white rounded-2xl p-16 text-center shadow-sm border border-gray-100">
-            <div className="w-20 h-20 bg-red-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
-              <Heart size={32} className="text-red-200" />
-            </div>
-            <h3 className="text-xl font-black text-gray-800 mb-2">Your wishlist is empty</h3>
-            <p className="text-gray-400 mb-6">Save items you love to buy them later</p>
-            <Link href="/" className="inline-flex items-center gap-2 px-6 py-3 bg-[#2874f0] text-white font-bold rounded-xl hover:bg-blue-700 transition-colors">
-              <ShoppingBag size={16} /> Browse Products
+        ) : items.length === 0 ? (
+          <div className="bg-white rounded-3xl py-20 text-center">
+            <Package size={80} className="mx-auto text-gray-300 mb-6" />
+            <h3 className="text-2xl font-bold text-gray-700 mb-2">Your wishlist is empty</h3>
+            <p className="text-gray-500 mb-8">You haven't saved any products yet</p>
+            <Link href="/products" className="inline-flex items-center gap-2 bg-[#F97316] text-white font-bold px-8 py-4 rounded-2xl hover:bg-orange-600 transition">
+              Browse Products
             </Link>
           </div>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
-            {items.map(item => {
-              const disc = discountPct(item)
-              return (
-                <div key={item.id}
-                  className={`bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden transition-all duration-300 ${removing === item.id ? 'opacity-0 scale-95' : 'opacity-100 scale-100'}`}>
-                  {/* Image */}
-                  <Link href={`/products/${item.slug}`}>
-                    <div className="relative aspect-square bg-gray-50 overflow-hidden group">
-                      {item.image
-                        ? <img src={item.image} alt={item.name} className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300" />
-                        : <div className="w-full h-full flex items-center justify-center text-4xl">📦</div>}
-                      {disc > 0 && <span className="absolute top-2 left-2 bg-green-500 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full">{disc}% OFF</span>}
-                      <button onClick={e => { e.preventDefault(); handleRemove(item.id) }}
-                        className="absolute top-2 right-2 w-7 h-7 bg-white rounded-full flex items-center justify-center shadow-sm hover:bg-red-50 hover:text-red-500 transition-colors text-gray-400 opacity-0 group-hover:opacity-100">
-                        <Trash2 size={13} />
-                      </button>
-                    </div>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            {items.map((item) => (
+              <div key={item.productId} className="group bg-white rounded-3xl overflow-hidden border border-gray-100 hover:shadow-xl transition-all">
+                <div className="relative aspect-square">
+                  <Image
+                    src={item.images?.[0] || '/placeholder.jpg'}
+                    alt={item.title}
+                    fill
+                    className="object-cover group-hover:scale-105 transition-transform duration-300"
+                    sizes="(max-width: 768px) 50vw, 25vw"
+                  />
+                  <button
+                    onClick={() => handleRemove(item.productId)}
+                    disabled={removingId === item.productId}
+                    className="absolute top-4 right-4 bg-white/90 hover:bg-white p-2 rounded-2xl shadow-md transition-all"
+                  >
+                    <Trash2 size={18} className="text-red-500" />
+                  </button>
+                </div>
+
+                <div className="p-4">
+                  <Link href={`/products/${item.slug}`} className="block">
+                    <h3 className="font-semibold text-gray-900 line-clamp-2 group-hover:text-[#F97316] transition-colors">
+                      {item.title}
+                    </h3>
                   </Link>
 
-                  <div className="p-3">
-                    <Link href={`/products/${item.slug}`}>
-                      <h3 className="text-xs font-bold text-gray-800 line-clamp-2 leading-snug hover:text-[#2874f0] transition-colors mb-1">{item.name}</h3>
-                    </Link>
-                    {item.rating && (
-                      <div className="flex items-center gap-1 mb-2">
-                        <span className="flex items-center gap-0.5 bg-green-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
-                          {item.rating} <Star size={8} className="fill-white" />
-                        </span>
-                      </div>
+                  <div className="flex items-center gap-1.5 mt-3">
+                    <span className="text-lg font-black text-gray-900">
+                      ₹{(item.price ?? 0).toLocaleString('en-IN')}
+                    </span>
+                    {item.originalPrice && (
+                      <span className="text-sm text-gray-400 line-through">
+                        ₹{(item.originalPrice ?? 0).toLocaleString('en-IN')}
+                      </span>
                     )}
-                    <div className="flex items-center gap-1.5 mb-3">
-                      <span className="text-sm font-black text-gray-900">₹{item.price.toLocaleString('en-IN')}</span>
-                      {item.originalPrice && <span className="text-[10px] text-gray-400 line-through">₹{item.originalPrice.toLocaleString('en-IN')}</span>}
-                    </div>
-                    <button onClick={() => handleAddToCart(item)}
-                      className="w-full flex items-center justify-center gap-1.5 py-2 bg-[#2874f0] hover:bg-blue-700 text-white text-xs font-bold rounded-xl transition-colors">
-                      <ShoppingCart size={13} /> Add to Cart
-                    </button>
                   </div>
+
+                  <button
+                    onClick={() => handleAddToCart(item)}
+                    className="mt-4 w-full bg-[#F97316] hover:bg-orange-600 text-white font-bold py-3.5 rounded-2xl flex items-center justify-center gap-2 transition-all active:scale-95"
+                  >
+                    <ShoppingCart size={18} />
+                    Add to Cart
+                  </button>
                 </div>
-              )
-            })}
+              </div>
+            ))}
           </div>
         )}
       </div>

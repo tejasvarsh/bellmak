@@ -4,7 +4,6 @@ import { AppError } from '../middleware/errorHandler'
 import { AuthRequest } from '../middleware/auth'
 import { sendResponse } from '../utils/helpers'
 
-// ─── Helper ──────────────────────────────────────────────────
 const getOrCreateSeller = async (userId: string) => {
   let seller = await prisma.seller.findUnique({ where: { userId } })
   if (!seller) {
@@ -21,7 +20,6 @@ const getOrCreateSeller = async (userId: string) => {
   return seller
 }
 
-// @route POST /api/seller/register
 export const registerSeller = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const existing = await prisma.seller.findUnique({ where: { userId: req.user!.id } })
@@ -47,7 +45,6 @@ export const registerSeller = async (req: AuthRequest, res: Response, next: Next
   } catch (err) { next(err) }
 }
 
-// @route GET /api/seller/dashboard
 export const getSellerDashboard = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const seller = await getOrCreateSeller(req.user!.id)
@@ -113,7 +110,6 @@ export const getSellerDashboard = async (req: AuthRequest, res: Response, next: 
   } catch (err) { next(err) }
 }
 
-// @route GET /api/seller/products
 export const getSellerProducts = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const seller = await getOrCreateSeller(req.user!.id)
@@ -143,7 +139,6 @@ export const getSellerProducts = async (req: AuthRequest, res: Response, next: N
   } catch (err) { next(err) }
 }
 
-// @route POST /api/seller/products
 export const createProduct = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const seller = await getOrCreateSeller(req.user!.id)
@@ -160,7 +155,7 @@ export const createProduct = async (req: AuthRequest, res: Response, next: NextF
       categoryRecord = await prisma.category.create({
         data: {
           name: category,
-          slug: category.toLowerCase().replace(/\s+/g, '-').replace('&', '')
+          slug: category.toLowerCase().replace(/\s+/g, '-').replace(/&/g, 'and')
         }
       })
     }
@@ -174,11 +169,18 @@ export const createProduct = async (req: AuthRequest, res: Response, next: NextF
       data: {
         title, slug,
         description: description || '',
-        price: Number(price), mrp: Number(mrp), discount,
-        stock: Number(stock), brand: brand || '',
-        images: images || [], specifications: specifications || {},
-        isAssured: isAssured || false, isActive: true,
-        sellerId: seller.id, categoryId: categoryRecord.id
+        price: Number(price),
+        mrp: Number(mrp),
+        discount,
+        stock: Number(stock),
+        brand: brand || '',
+        images: images || [],
+        specifications: specifications || {},
+        isAssured: isAssured || false,
+        isActive: true,
+        isApproved: true,
+        sellerId: seller.id,
+        categoryId: categoryRecord.id
       }
     })
 
@@ -186,7 +188,6 @@ export const createProduct = async (req: AuthRequest, res: Response, next: NextF
   } catch (err) { next(err) }
 }
 
-// @route PUT /api/seller/products/:id
 export const updateProduct = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const seller = await getOrCreateSeller(req.user!.id)
@@ -196,7 +197,9 @@ export const updateProduct = async (req: AuthRequest, res: Response, next: NextF
     if (!product) throw new AppError('Product not found', 404)
 
     const { title, description, price, mrp, stock, brand, images, specifications, isAssured, isActive } = req.body
-    const discount = price && mrp ? Math.round(((Number(mrp) - Number(price)) / Number(mrp)) * 100) : product.discount
+    const discount = price && mrp
+      ? Math.round(((Number(mrp) - Number(price)) / Number(mrp)) * 100)
+      : product.discount
 
     const updated = await prisma.product.update({
       where: { id: req.params.id },
@@ -206,12 +209,13 @@ export const updateProduct = async (req: AuthRequest, res: Response, next: NextF
         price: price ? Number(price) : product.price,
         mrp: mrp ? Number(mrp) : product.mrp,
         discount,
-        stock: stock ? Number(stock) : product.stock,
+        stock: stock !== undefined ? Number(stock) : product.stock,
         brand: brand || product.brand,
         images: images || product.images,
         specifications: specifications || product.specifications,
         isAssured: isAssured !== undefined ? isAssured : product.isAssured,
         isActive: isActive !== undefined ? isActive : product.isActive,
+        isApproved: true,
       }
     })
 
@@ -219,7 +223,6 @@ export const updateProduct = async (req: AuthRequest, res: Response, next: NextF
   } catch (err) { next(err) }
 }
 
-// @route DELETE /api/seller/products/:id
 export const deleteProduct = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const seller = await getOrCreateSeller(req.user!.id)
@@ -228,12 +231,14 @@ export const deleteProduct = async (req: AuthRequest, res: Response, next: NextF
     })
     if (!product) throw new AppError('Product not found', 404)
 
-    await prisma.product.delete({ where: { id: req.params.id } })
+    await prisma.product.update({
+      where: { id: req.params.id },
+      data: { isActive: false }
+    })
     sendResponse(res, 200, true, 'Product deleted successfully')
   } catch (err) { next(err) }
 }
 
-// @route GET /api/seller/orders
 export const getSellerOrders = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const seller = await getOrCreateSeller(req.user!.id)
@@ -299,7 +304,6 @@ export const getSellerOrders = async (req: AuthRequest, res: Response, next: Nex
   } catch (err) { next(err) }
 }
 
-// @route PATCH /api/seller/orders/:id/status
 export const updateOrderStatus = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { status, trackingId, deliveryPartner } = req.body
@@ -349,7 +353,6 @@ export const updateOrderStatus = async (req: AuthRequest, res: Response, next: N
   } catch (err) { next(err) }
 }
 
-// @route PUT /api/seller/orders/:id/ship
 export const shipOrder = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { trackingId, deliveryPartner } = req.body
@@ -363,7 +366,6 @@ export const shipOrder = async (req: AuthRequest, res: Response, next: NextFunct
   } catch (err) { next(err) }
 }
 
-// @route POST /api/seller/orders/:orderId/confirm-cod-received
 export const confirmCODReceived = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const seller = await getOrCreateSeller(req.user!.id)
@@ -383,11 +385,10 @@ export const confirmCODReceived = async (req: AuthRequest, res: Response, next: 
     }
 
     await prisma.order.update({ where: { id: order.id }, data: { paymentStatus: 'PAID' } })
-    sendResponse(res, 200, true, 'COD payment confirmed! Order complete. ✅')
+    sendResponse(res, 200, true, 'COD payment confirmed!')
   } catch (err) { next(err) }
 }
 
-// @route GET /api/seller/payments
 export const getSellerPayments = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const seller = await getOrCreateSeller(req.user!.id)
@@ -410,7 +411,6 @@ export const getSellerPayments = async (req: AuthRequest, res: Response, next: N
   } catch (err) { next(err) }
 }
 
-// @route PUT /api/seller/profile
 export const updateSellerProfile = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const seller = await prisma.seller.update({

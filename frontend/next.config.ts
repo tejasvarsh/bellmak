@@ -2,16 +2,17 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   images: {
-    remotePatterns: [
-      { protocol: 'https', hostname: 'res.cloudinary.com' },
-      { protocol: 'https', hostname: 'via.placeholder.com' },
-      { protocol: 'https', hostname: 'placehold.co' },
-      { protocol: 'https', hostname: 'images.unsplash.com' },
-    ],
+    remotePatterns: [{ protocol: 'https', hostname: '**' }],
+    dangerouslyAllowSVG: true,
+    contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
+    formats: ['image/avif', 'image/webp'],
+    minimumCacheTTL: 86400,
   },
-  typescript: {
-    ignoreBuildErrors: true,
-  },
+  experimental: { optimizeCss: true },
+  transpilePackages: [],
+  poweredByHeader: false,
+  reactStrictMode: true,
+  typescript: { ignoreBuildErrors: true },
 };
 
 export default nextConfig;

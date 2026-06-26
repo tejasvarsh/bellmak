@@ -6,11 +6,15 @@ import { AppError } from '../middleware/errorHandler'
 import { AuthRequest } from '../middleware/auth'
 import { sendResponse } from '../utils/helpers'
 import { sendOTPEmail } from '../utils/mailer'
+import { 
+  registerSchema, 
+  loginSchema 
+} from '../schemas/auth.schema'
 
-// ─── OTP Store ────────────────────────────────────────────────
+// ── OTP Store ─────────────────────────────────────
 const otpStore = new Map<string, { otp: string; expiresAt: number; attempts: number }>()
 
-const makeOTP  = () => Math.floor(100000 + Math.random() * 900000).toString()
+const makeOTP = () => Math.floor(100000 + Math.random() * 900000).toString()
 
 const storeOTP = (key: string, otp: string) => {
   otpStore.set(key, { otp, expiresAt: Date.now() + 10 * 60 * 1000, attempts: 0 })
@@ -18,19 +22,30 @@ const storeOTP = (key: string, otp: string) => {
 
 const checkOTP = (key: string, input: string): { valid: boolean; error?: string } => {
   const s = otpStore.get(key)
-  if (!s)                    return { valid: false, error: 'OTP expired ya invalid. Dobara request karo.' }
-  if (Date.now() > s.expiresAt) { otpStore.delete(key); return { valid: false, error: 'OTP expire ho gaya. Dobara request karo.' } }
-  if (s.attempts >= 5)       { otpStore.delete(key); return { valid: false, error: 'Too many attempts. Naya OTP request karo.' } }
+  if (!s) return { valid: false, error: 'OTP expired ya invalid. Dobara request karo.' }
+  
+  if (Date.now() > s.expiresAt) {
+    otpStore.delete(key)
+    return { valid: false, error: 'OTP expire ho gaya. Dobara request karo.' }
+  }
+  
+  if (s.attempts >= 5) {
+    otpStore.delete(key)
+    return { valid: false, error: 'Too many attempts. Naya OTP request karo.' }
+  }
+
   s.attempts++
-  if (s.otp !== input) return { valid: false, error: `OTP galat hai. ${5 - s.attempts} attempts bache hain.` }
+  if (s.otp !== input) 
+    return { valid: false, error: `OTP galat hai. ${5 - s.attempts} attempts bache hain.` }
+
   otpStore.delete(key)
   return { valid: true }
 }
 
-// ─── Token Helpers ────────────────────────────────────────────
+// ── Token Helpers ─────────────────────────────────
 const makeTokens = (id: string, role: string, email?: string) => ({
-  accessToken:  jwt.sign({ id, role, email }, process.env.JWT_SECRET!,         { expiresIn: '7d'  }),
-  refreshToken: jwt.sign({ id },              process.env.JWT_REFRESH_SECRET!, { expiresIn: '30d' })
+  accessToken: jwt.sign({ id, role, email }, process.env.JWT_SECRET!, { expiresIn: '7d' }),
+  refreshToken: jwt.sign({ id }, process.env.JWT_REFRESH_SECRET!, { expiresIn: '30d' })
 })
 
 const saveRT = async (userId: string, token: string) => {
@@ -42,333 +57,409 @@ const saveRT = async (userId: string, token: string) => {
 const setCookie = (res: Response, token: string) => {
   res.cookie('refreshToken', token, {
     httpOnly: true,
-    secure:   process.env.NODE_ENV === 'production',
+    secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
-    maxAge:   30 * 24 * 60 * 60 * 1000
+    maxAge: 30 * 24 * 60 * 60 * 1000
   })
 }
 
-// ─── Register ─────────────────────────────────────────────────
+// ── Register with Validation ──────────────────────
 export const register = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { name, email, phone, password, role } = req.body
-    if (!name || !password || (!email && !phone)) throw new AppError('Name, password and email or phone required', 400)
+    const validated = registerSchema.parse(req.body);
 
     const existing = await prisma.user.findFirst({
-      where: { OR: [email ? { email } : {}, phone ? { phone } : {}] }
-    })
-    if (existing) throw new AppError('User already exists', 409)
+      where: { 
+        OR: [
+          validated.email ? { email: validated.email } : {}, 
+          validated.phone ? { phone: validated.phone } : {} 
+        ] 
+      }
+    });
 
-    const hashed = await bcrypt.hash(password, 12)
-    const user   = await prisma.user.create({
+    if (existing) throw new AppError('Yeh email ya phone number pehle se registered hai', 409);
+
+    const hashed = await bcrypt.hash(validated.password, 12);
+
+    const user = await prisma.user.create({
       data: {
-        name, email: email || null, phone: phone || null,
-        password: hashed, role: role === 'SELLER' ? 'SELLER' : 'CUSTOMER'
+        name: validated.name,
+        email: validated.email || null,
+        phone: validated.phone || null,
+        password: hashed,
+        role: validated.role
       },
-      select: { id: true, name: true, email: true, phone: true, role: true, bellmakCoins: true, createdAt: true }
-    })
+      select: {
+        id: true, name: true, email: true, phone: true, role: true, 
+        bellmakCoins: true, createdAt: true
+      }
+    });
 
-    if (role === 'SELLER') {
+    if (validated.role === 'SELLER') {
       await prisma.seller.create({
-        data: { userId: user.id, businessName: name + "'s Store", kycStatus: 'APPROVED', isApproved: true }
-      })
+        data: {
+          userId: user.id,
+          businessName: validated.name + "'s Store",
+          kycStatus: 'APPROVED',
+          isApproved: true
+        }
+      });
     }
 
-    const { accessToken, refreshToken } = makeTokens(user.id, user.role)
-    await saveRT(user.id, refreshToken)
-    setCookie(res, refreshToken)
-    sendResponse(res, 201, true, 'Registration successful', { user, accessToken })
-  } catch (err) { next(err) }
-}
+    const { accessToken, refreshToken } = makeTokens(user.id, user.role);
+    await saveRT(user.id, refreshToken);
+    setCookie(res, refreshToken);
 
-// ─── Login ────────────────────────────────────────────────────
+    sendResponse(res, 201, true, 'Registration successful', { user, accessToken });
+  } catch (err: any) {
+    if (err.name === 'ZodError') {
+      return next(new AppError(err.errors[0].message, 400));
+    }
+    next(err);
+  }
+};
+
+// ── Login with Validation ─────────────────────────
 export const login = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { emailOrPhone, password } = req.body
-    if (!emailOrPhone || !password) throw new AppError('Email/Phone and password required', 400)
+    const validated = loginSchema.parse(req.body);
+
+    const normalizedInput = validated.emailOrPhone.toLowerCase().trim();
 
     const user = await prisma.user.findFirst({
-      where: { OR: [{ email: emailOrPhone }, { phone: emailOrPhone }] }
-    })
-    if (!user || !user.password) throw new AppError('Invalid credentials', 401)
-    if (!user.isActive)          throw new AppError('Account banned. Contact support.', 403)
+      where: { 
+        OR: [
+          { email: normalizedInput }, 
+          { phone: validated.emailOrPhone } 
+        ] 
+      }
+    });
 
-    const ok = await bcrypt.compare(password, user.password)
-    if (!ok) throw new AppError('Invalid credentials', 401)
+    if (!user || !user.password) 
+      throw new AppError('Email/Phone ya password galat hai', 401);
 
-    const { accessToken, refreshToken } = makeTokens(user.id, user.role, user.email || undefined)
-    await saveRT(user.id, refreshToken)
-    setCookie(res, refreshToken)
+    if (!user.isActive) 
+      throw new AppError('Aapka account temporarily band hai. Support se contact karein.', 403);
+
+    const ok = await bcrypt.compare(validated.password, user.password);
+    if (!ok) 
+      throw new AppError('Email/Phone ya password galat hai', 401);
+
+    const { accessToken, refreshToken } = makeTokens(user.id, user.role, user.email || undefined);
+    
+    await saveRT(user.id, refreshToken);
+    setCookie(res, refreshToken);
 
     sendResponse(res, 200, true, 'Login successful', {
       user: {
-        id: user.id, name: user.name, email: user.email,
-        phone: user.phone, role: user.role, avatar: user.avatar,
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        role: user.role,
+        avatar: user.avatar,
         bellmakCoins: user.bellmakCoins
       },
       accessToken
-    })
-  } catch (err) { next(err) }
-}
+    });
+  } catch (err: any) {
+    if (err.name === 'ZodError') {
+      return next(new AppError(err.errors[0].message, 400));
+    }
+    next(err);
+  }
+};
 
-// ─── Logout ───────────────────────────────────────────────────
+// ── Baaki Functions (No Change) ─────────────────────
 export const logout = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const token = req.cookies.refreshToken
-    if (token) await prisma.refreshToken.deleteMany({ where: { token } })
-    res.clearCookie('refreshToken')
-    sendResponse(res, 200, true, 'Logged out successfully')
-  } catch (err) { next(err) }
-}
+    const token = req.cookies.refreshToken;
+    if (token) await prisma.refreshToken.deleteMany({ where: { token } });
+    res.clearCookie('refreshToken');
+    sendResponse(res, 200, true, 'Logged out successfully');
+  } catch (err) {
+    next(err);
+  }
+};
 
-// ─── Get Me ───────────────────────────────────────────────────
 export const getMe = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const user = await prisma.user.findUnique({
       where: { id: req.user!.id },
       select: {
-        id: true, name: true, email: true, phone: true,
-        role: true, avatar: true, bellmakCoins: true,
-        isVerified: true, createdAt: true,
+        id: true, name: true, email: true, phone: true, role: true,
+        avatar: true, bellmakCoins: true, isVerified: true, createdAt: true,
         _count: { select: { orders: true, wishlist: true } }
       }
-    })
-    if (!user) throw new AppError('User not found', 404)
-    sendResponse(res, 200, true, 'User fetched', user)
-  } catch (err) { next(err) }
-}
+    });
+    if (!user) throw new AppError('User not found', 404);
+    sendResponse(res, 200, true, 'User fetched', user);
+  } catch (err) {
+    next(err);
+  }
+};
 
-// ─── Refresh Token ────────────────────────────────────────────
 export const refreshToken = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const token = req.cookies.refreshToken
-    if (!token) throw new AppError('No refresh token', 401)
+    const token = req.cookies.refreshToken;
+    if (!token) throw new AppError('No refresh token', 401);
 
-    const stored = await prisma.refreshToken.findUnique({ where: { token }, include: { user: true } })
-    if (!stored || stored.expiresAt < new Date()) throw new AppError('Invalid or expired refresh token', 401)
+    const stored = await prisma.refreshToken.findUnique({
+      where: { token },
+      include: { user: true }
+    });
 
-    const decoded = jwt.verify(token, process.env.JWT_REFRESH_SECRET!) as any
-    const { accessToken, refreshToken: newRT } = makeTokens(decoded.id, stored.user.role)
+    if (!stored || stored.expiresAt < new Date()) 
+      throw new AppError('Invalid or expired refresh token', 401);
 
-    await prisma.refreshToken.delete({ where: { token } })
-    await saveRT(decoded.id, newRT)
-    setCookie(res, newRT)
-    sendResponse(res, 200, true, 'Token refreshed', { accessToken })
-  } catch (err) { next(err) }
-}
+    const decoded = jwt.verify(token, process.env.JWT_REFRESH_SECRET!) as any;
 
-// ─── Send OTP (Phone) ─────────────────────────────────────────
+    const { accessToken, refreshToken: newRT } = makeTokens(decoded.id, stored.user.role);
+
+    await prisma.refreshToken.delete({ where: { token } });
+    await saveRT(decoded.id, newRT);
+    setCookie(res, newRT);
+
+    sendResponse(res, 200, true, 'Token refreshed', { accessToken });
+  } catch (err) {
+    next(err);
+  }
+};
+
 export const sendOTP = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { phone } = req.body
-    if (!phone) throw new AppError('Phone number required', 400)
+    const { phone } = req.body;
+    if (!phone) throw new AppError('Phone number required', 400);
 
-    const otp = makeOTP()
-    storeOTP(`phone:${phone}`, otp)
-    console.log(`📱 SMS OTP for ${phone}: ${otp}`) // TODO: Twilio/MSG91
+    const otp = makeOTP();
+    storeOTP(`phone:${phone}`, otp);
+    console.log(`📱 SMS OTP for ${phone}: ${otp}`);
 
     await prisma.user.upsert({
       where: { phone },
       update: {},
       create: { phone, name: 'User', role: 'CUSTOMER' }
-    })
+    });
 
-    sendResponse(res, 200, true, 'OTP sent to your phone')
-  } catch (err) { next(err) }
-}
+    sendResponse(res, 200, true, 'OTP sent to your phone');
+  } catch (err) {
+    next(err);
+  }
+};
 
-// ─── Verify OTP (Phone Login) ─────────────────────────────────
 export const verifyOTP = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { phone, otp } = req.body
-    if (!phone || !otp) throw new AppError('Phone and OTP required', 400)
+    const { phone, otp } = req.body;
+    if (!phone || !otp) throw new AppError('Phone and OTP required', 400);
 
-    const result = checkOTP(`phone:${phone}`, otp)
-    if (!result.valid) throw new AppError(result.error!, 400)
+    const result = checkOTP(`phone:${phone}`, otp);
+    if (!result.valid) throw new AppError(result.error!, 400);
 
-    const user = await prisma.user.findUnique({ where: { phone } })
-    if (!user) throw new AppError('User not found', 404)
+    const user = await prisma.user.findUnique({ where: { phone } });
+    if (!user) throw new AppError('User not found', 404);
 
-    const { accessToken, refreshToken } = makeTokens(user.id, user.role)
-    await saveRT(user.id, refreshToken)
-    setCookie(res, refreshToken)
+    const { accessToken, refreshToken } = makeTokens(user.id, user.role);
+    await saveRT(user.id, refreshToken);
+    setCookie(res, refreshToken);
 
     sendResponse(res, 200, true, 'Login successful', {
       user: { id: user.id, name: user.name, phone: user.phone, role: user.role },
       accessToken
-    })
-  } catch (err) { next(err) }
-}
+    });
+  } catch (err) {
+    next(err);
+  }
+};
 
-// ─── Forgot Password ──────────────────────────────────────────
+// ForgotPassword, ResetPassword, SwitchRole, UpdateProfile, ChangePassword, GetCoinsHistory 
+// abhi ke liye same rakh rahe hain. Agar chahein toh baad mein unme bhi validation add kar sakte hain.
+
 export const forgotPassword = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { email } = req.body
-    if (!email) throw new AppError('Email required', 400)
+    const { email } = req.body;
+    if (!email) throw new AppError('Email required', 400);
 
-    const normalizedEmail = email.toLowerCase().trim()
+    const normalizedEmail = email.toLowerCase().trim();
+    const user = await prisma.user.findUnique({ where: { email: normalizedEmail } });
 
-    const user = await prisma.user.findUnique({ where: { email: normalizedEmail } })
-
-    // Security: same message chahe email ho ya na ho
     if (!user) {
-      sendResponse(res, 200, true, 'Agar ye email registered hai toh OTP bheja gaya hai.')
-      return
+      sendResponse(res, 200, true, 'Agar ye email registered hai toh OTP bheja gaya hai.');
+      return;
     }
 
-    const otp = makeOTP()
-    storeOTP(`reset:${normalizedEmail}`, otp)
+    const otp = makeOTP();
+    storeOTP(`reset:${normalizedEmail}`, otp);
 
-    // ✅ REAL EMAIL BHEJO
     try {
-      await sendOTPEmail(normalizedEmail, otp, user.name)
-      console.log(`✅ OTP email sent to ${normalizedEmail}`)
+      await sendOTPEmail(normalizedEmail, otp, user.name);
     } catch (emailErr: any) {
-      console.error(`❌ Email failed:`, emailErr.message)
-      // OTP store raho even if email fails — debug ke liye
-      console.log(`🔑 DEBUG OTP for ${normalizedEmail}: ${otp}`)
-      throw new AppError('Email bhejne mein problem. Dobara try karo.', 500)
+      console.error(`Email failed:`, emailErr.message);
+      console.log(`DEBUG OTP for ${normalizedEmail}: ${otp}`);
+      throw new AppError('Email bhejne mein problem. Dobara try karo.', 500);
     }
 
-    sendResponse(res, 200, true, 'OTP aapke email par bheja gaya hai!')
-  } catch (err) { next(err) }
-}
+    sendResponse(res, 200, true, 'OTP aapke email par bheja gaya hai!');
+  } catch (err) {
+    next(err);
+  }
+};
 
-// ─── Reset Password ───────────────────────────────────────────
 export const resetPassword = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { email, otp, newPassword } = req.body
-    if (!email || !otp || !newPassword) throw new AppError('Email, OTP aur new password required', 400)
-    if (newPassword.length < 6)         throw new AppError('Password minimum 6 characters', 400)
+    const { email, otp, newPassword } = req.body;
+    if (!email || !otp || !newPassword) throw new AppError('Email, OTP aur new password required', 400);
+    if (newPassword.length < 6) throw new AppError('Password minimum 6 characters', 400);
 
-    const normalizedEmail = email.toLowerCase().trim()
+    const normalizedEmail = email.toLowerCase().trim();
+    const result = checkOTP(`reset:${normalizedEmail}`, otp);
+    if (!result.valid) throw new AppError(result.error!, 400);
 
-    const result = checkOTP(`reset:${normalizedEmail}`, otp)
-    if (!result.valid) throw new AppError(result.error!, 400)
+    const user = await prisma.user.findUnique({ where: { email: normalizedEmail } });
+    if (!user) throw new AppError('User not found', 404);
 
-    const user = await prisma.user.findUnique({ where: { email: normalizedEmail } })
-    if (!user) throw new AppError('User not found', 404)
+    const hashed = await bcrypt.hash(newPassword, 12);
+    await prisma.user.update({
+      where: { email: normalizedEmail },
+      data: { password: hashed }
+    });
 
-    const hashed = await bcrypt.hash(newPassword, 12)
-    await prisma.user.update({ where: { email: normalizedEmail }, data: { password: hashed } })
-    await prisma.refreshToken.deleteMany({ where: { userId: user.id } })
+    await prisma.refreshToken.deleteMany({ where: { userId: user.id } });
+    sendResponse(res, 200, true, 'Password reset successful! Ab login karo.');
+  } catch (err) {
+    next(err);
+  }
+};
 
-    sendResponse(res, 200, true, 'Password reset successful! Ab login karo.')
-  } catch (err) { next(err) }
-}
-
-// ─── Switch Role ──────────────────────────────────────────────
 export const switchRole = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const { role } = req.body
-    const userId = req.user!.id
-    if (!['CUSTOMER', 'SELLER'].includes(role)) throw new AppError('Invalid role!', 400)
+    const { role } = req.body;
+    const userId = req.user!.id;
+    if (!['CUSTOMER', 'SELLER'].includes(role)) throw new AppError('Invalid role!', 400);
 
     if (role === 'SELLER') {
-      const existing = await prisma.seller.findUnique({ where: { userId } })
+      const existing = await prisma.seller.findUnique({ where: { userId } });
       if (!existing) {
-        const u = await prisma.user.findUnique({ where: { id: userId } })
+        const u = await prisma.user.findUnique({ where: { id: userId } });
         await prisma.seller.create({
           data: { userId, businessName: u!.name + "'s Store", kycStatus: 'APPROVED', isApproved: true }
-        })
+        });
       }
     }
 
-    const user = await prisma.user.update({ where: { id: userId }, data: { role } })
-    const { accessToken, refreshToken } = makeTokens(user.id, user.role, user.email || undefined)
-    await saveRT(user.id, refreshToken)
-    setCookie(res, refreshToken)
+    const user = await prisma.user.update({ where: { id: userId }, data: { role } });
+
+    const { accessToken, refreshToken } = makeTokens(user.id, user.role, user.email || undefined);
+    await saveRT(user.id, refreshToken);
+    setCookie(res, refreshToken);
 
     sendResponse(res, 200, true, 'Role switched', {
-      user: {
-        id: user.id, name: user.name, email: user.email,
-        phone: user.phone, role: user.role, bellmakCoins: user.bellmakCoins
-      },
+      user: { id: user.id, name: user.name, email: user.email, phone: user.phone, role: user.role, bellmakCoins: user.bellmakCoins },
       accessToken
-    })
-  } catch (err) { next(err) }
-}
+    });
+  } catch (err) {
+    next(err);
+  }
+};
 
-// ─── Update Profile ───────────────────────────────────────────
 export const updateProfile = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const { name, phone } = req.body
-    const userId = req.user!.id
-    if (!name && !phone) throw new AppError('Name ya phone required', 400)
+    const { name, phone } = req.body;
+    const userId = req.user!.id;
+    if (!name && !phone) throw new AppError('Name ya phone required', 400);
 
     if (phone) {
-      const existing = await prisma.user.findFirst({ where: { phone, NOT: { id: userId } } })
-      if (existing) throw new AppError('Phone already use ho raha hai', 409)
+      const existing = await prisma.user.findFirst({ where: { phone, NOT: { id: userId } } });
+      if (existing) throw new AppError('Phone already use ho raha hai', 409);
     }
 
     const user = await prisma.user.update({
       where: { id: userId },
       data: { ...(name && { name }), ...(phone && { phone }) },
       select: { id: true, name: true, email: true, phone: true, role: true, avatar: true, bellmakCoins: true }
-    })
-    sendResponse(res, 200, true, 'Profile updated', user)
-  } catch (err) { next(err) }
-}
+    });
 
-// ─── Change Password ──────────────────────────────────────────
+    sendResponse(res, 200, true, 'Profile updated', user);
+  } catch (err) {
+    next(err);
+  }
+};
+
 export const changePassword = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const { currentPassword, newPassword } = req.body
-    const userId = req.user!.id
-    if (!currentPassword || !newPassword) throw new AppError('Current aur new password required', 400)
-    if (newPassword.length < 6)           throw new AppError('Password minimum 6 characters', 400)
+    const { currentPassword, newPassword } = req.body;
+    const userId = req.user!.id;
 
-    const user = await prisma.user.findUnique({ where: { id: userId } })
-    if (!user || !user.password) throw new AppError('User not found', 404)
+    if (!currentPassword || !newPassword) throw new AppError('Current aur new password required', 400);
+    if (newPassword.length < 6) throw new AppError('Password minimum 6 characters', 400);
 
-    const ok = await bcrypt.compare(currentPassword, user.password)
-    if (!ok) throw new AppError('Current password galat hai', 401)
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user || !user.password) throw new AppError('User not found', 404);
 
-    const hashed = await bcrypt.hash(newPassword, 12)
-    await prisma.user.update({ where: { id: userId }, data: { password: hashed } })
-    await prisma.refreshToken.deleteMany({ where: { userId } })
-    res.clearCookie('refreshToken')
+    const ok = await bcrypt.compare(currentPassword, user.password);
+    if (!ok) throw new AppError('Current password galat hai', 401);
 
-    sendResponse(res, 200, true, 'Password changed. Please login again.')
-  } catch (err) { next(err) }
-}
+    const hashed = await bcrypt.hash(newPassword, 12);
+    await prisma.user.update({ where: { id: userId }, data: { password: hashed } });
+    await prisma.refreshToken.deleteMany({ where: { userId } });
+    res.clearCookie('refreshToken');
 
-// ─── Coins History ────────────────────────────────────────────
+    sendResponse(res, 200, true, 'Password changed. Please login again.');
+  } catch (err) {
+    next(err);
+  }
+};
+
 export const getCoinsHistory = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const userId = req.user!.id
+    const userId = req.user!.id;
     const user = await prisma.user.findUnique({
       where: { id: userId },
       select: { bellmakCoins: true, name: true }
-    })
-    if (!user) throw new AppError('User not found', 404)
+    });
+    if (!user) throw new AppError('User not found', 404);
 
     const orders = await prisma.order.findMany({
       where: { userId },
       select: { orderId: true, coinsUsed: true, totalAmount: true, status: true, createdAt: true },
-      orderBy: { createdAt: 'desc' }, take: 20
-    })
+      orderBy: { createdAt: 'desc' },
+      take: 20
+    });
 
-    const transactions: any[] = []
+    const transactions: any[] = [];
     orders.forEach(o => {
-      if (o.coinsUsed > 0) transactions.push({
-        id: `spent-${o.orderId}`, type: 'SPENT', amount: o.coinsUsed,
-        description: `Coins used on #${o.orderId}`, orderId: o.orderId, createdAt: o.createdAt
-      })
-      if (o.status === 'DELIVERED') {
-        const earned = Math.floor(o.totalAmount * 0.01)
-        if (earned > 0) transactions.push({
-          id: `earned-${o.orderId}`, type: 'EARNED', amount: earned,
-          description: `Coins earned on #${o.orderId}`, orderId: o.orderId, createdAt: o.createdAt
-        })
+      if (o.coinsUsed > 0) {
+        transactions.push({
+          id: `spent-${o.orderId}`,
+          type: 'SPENT',
+          amount: o.coinsUsed,
+          description: `Coins used on #${o.orderId}`,
+          orderId: o.orderId,
+          createdAt: o.createdAt
+        });
       }
-    })
+      if (o.status === 'DELIVERED') {
+        const earned = Math.floor(o.totalAmount * 0.01);
+        if (earned > 0) {
+          transactions.push({
+            id: `earned-${o.orderId}`,
+            type: 'EARNED',
+            amount: earned,
+            description: `Coins earned on #${o.orderId}`,
+            orderId: o.orderId,
+            createdAt: o.createdAt
+          });
+        }
+      }
+    });
 
-    transactions.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    transactions.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
     sendResponse(res, 200, true, 'Coins history fetched', {
       currentBalance: user.bellmakCoins,
       coinValue: user.bellmakCoins * 0.25,
       transactions
-    })
-  } catch (err) { next(err) }
-}
+    });
+  } catch (err) {
+    next(err);
+  }
+};

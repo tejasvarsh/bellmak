@@ -7,57 +7,35 @@ import ProductCard from '@/components/product/ProductCard'
 import {
   ArrowRight, ArrowUpRight, Zap, Star, Shield, Truck,
   RefreshCw, Award, ChevronLeft, ChevronRight, Play,
-  TrendingUp, Crown, Radio, Flame, Tag, Clock, Sparkles,
-  Percent
+  TrendingUp, Crown, Radio, Flame, Clock, Sparkles, Percent
 } from 'lucide-react'
-
-const DUMMY: any[] = [
-  { id:'1',  title:'Samsung Galaxy S23 Ultra 5G',      price:89999,  mrp:124999, discount:28, images:['https://placehold.co/280x280/eff6ff/3b82f6?text=S23'],     avgRating:4.5, totalReviews:2341, slug:'samsung-s23',       stock:10  },
-  { id:'2',  title:'Apple iPhone 15 Pro Max 256GB',    price:134900, mrp:159900, discount:16, images:['https://placehold.co/280x280/f9fafb/374151?text=iPhone'],   avgRating:4.8, totalReviews:4567, slug:'iphone-15',         stock:5   },
-  { id:'3',  title:'Sony WH-1000XM5 Headphones',      price:24990,  mrp:34990,  discount:29, images:['https://placehold.co/280x280/fdf4ff/a855f7?text=Sony'],     avgRating:4.6, totalReviews:1230, slug:'sony-xm5',          stock:20  },
-  { id:'4',  title:'Nike Air Max 270 Running Shoes',   price:8995,   mrp:12995,  discount:31, images:['https://placehold.co/280x280/fefce8/eab308?text=Nike'],     avgRating:4.3, totalReviews:890,  slug:'nike-airmax',       stock:15  },
-  { id:'5',  title:'LG 55" 4K OLED Smart WebOS TV',   price:49990,  mrp:79990,  discount:38, images:['https://placehold.co/280x280/f0fdf4/22c55e?text=LG+TV'],    avgRating:4.4, totalReviews:1670, slug:'lg-tv',             stock:8   },
-  { id:'6',  title:'Prestige Iris 750W Mixer Grinder', price:2499,   mrp:4500,   discount:44, images:['https://placehold.co/280x280/fff1f2/f43f5e?text=Prestige'], avgRating:4.2, totalReviews:780,  slug:'prestige-mixer',    stock:30  },
-  { id:'7',  title:'boAt Rockerz 450 Headphone',      price:1299,   mrp:2990,   discount:57, images:['https://placehold.co/280x280/eff6ff/3b82f6?text=boAt'],     avgRating:4.1, totalReviews:3200, slug:'boat-rockerz',      stock:50  },
-  { id:'8',  title:'Philips Air Fryer HD9200 4.1L',   price:5999,   mrp:8995,   discount:33, images:['https://placehold.co/280x280/f0fdf4/16a34a?text=Philips'],  avgRating:4.4, totalReviews:1100, slug:'philips-airfryer',  stock:12  },
-  { id:'9',  title:'Harry Potter Complete Box Set',   price:2499,   mrp:3999,   discount:38, images:['https://placehold.co/280x280/fff7ed/f97316?text=HP'],       avgRating:4.9, totalReviews:5670, slug:'hp-books',          stock:25  },
-  { id:'10', title:'Lakme 9To5 Mousse Foundation',    price:699,    mrp:950,    discount:26, images:['https://placehold.co/280x280/fdf2f8/ec4899?text=Lakme'],    avgRating:4.1, totalReviews:2340, slug:'lakme',             stock:100 },
-  { id:'11', title:'Fastrack Reflex 3.0 Smart Watch', price:3995,   mrp:5995,   discount:33, images:['https://placehold.co/280x280/f1f5f9/475569?text=Watch'],    avgRating:4.0, totalReviews:980,  slug:'fastrack',          stock:40  },
-  { id:'12', title:'Puma RS-X Bold Running Shoes',    price:6999,   mrp:9999,   discount:30, images:['https://placehold.co/280x280/fff0f3/be123c?text=Puma'],     avgRating:4.3, totalReviews:560,  slug:'puma-rsx',          stock:18  },
-  { id:'13', title:'Dell Inspiron 15 Laptop i5',      price:52990,  mrp:72990,  discount:27, images:['https://placehold.co/280x280/eff6ff/1d4ed8?text=Dell'],     avgRating:4.3, totalReviews:1340, slug:'dell-laptop',       stock:7   },
-  { id:'14', title:'Mamaearth Face Wash Combo',       price:399,    mrp:698,    discount:43, images:['https://placehold.co/280x280/fdf4ff/7c3aed?text=Mama'],     avgRating:4.4, totalReviews:4230, slug:'mamaearth',         stock:200 },
-  { id:'15', title:'Adidas Ultraboost 22 Running',    price:9995,   mrp:16995,  discount:41, images:['https://placehold.co/280x280/fefce8/ca8a04?text=Adidas'],   avgRating:4.5, totalReviews:780,  slug:'adidas-ultraboost', stock:22  },
-  { id:'16', title:'Whirlpool 265L Double Door Fridge',price:24990, mrp:35000,  discount:29, images:['https://placehold.co/280x280/ecfdf5/047857?text=Fridge'],   avgRating:4.2, totalReviews:890,  slug:'whirlpool-fridge',  stock:4   },
-]
 
 const CATEGORIES = [
   { name:'For You',     slug:'featured',     emoji:'✨', color:'from-orange-400 to-amber-400'   },
   { name:'Mobiles',     slug:'mobiles',      emoji:'📱', color:'from-blue-400 to-blue-600'      },
   { name:'Fashion',     slug:'fashion',      emoji:'👗', color:'from-pink-400 to-rose-500'      },
-  { name:'Electronics', slug:'electronics',  emoji:'💻', color:'from-purple-400 to-violet-600' },
-  { name:'Home',        slug:'home-kitchen', emoji:'🏠', color:'from-green-400 to-emerald-500' },
-  { name:'Beauty',      slug:'beauty',       emoji:'💄', color:'from-rose-400 to-pink-600'     },
-  { name:'Sports',      slug:'sports',       emoji:'⚽', color:'from-orange-400 to-red-500'    },
-  { name:'Books',       slug:'books',        emoji:'📚', color:'from-amber-400 to-yellow-500'  },
-  { name:'Grocery',     slug:'grocery',      emoji:'🛒', color:'from-lime-400 to-green-500'    },
-  { name:'Toys',        slug:'toys',         emoji:'🧸', color:'from-yellow-400 to-amber-500'  },
-  { name:'Appliances',  slug:'appliances',   emoji:'🔌', color:'from-cyan-400 to-blue-500'     },
-  { name:'Furniture',   slug:'furniture',    emoji:'🪑', color:'from-stone-400 to-stone-600'   },
+  { name:'Electronics', slug:'electronics',  emoji:'💻', color:'from-purple-400 to-violet-600'  },
+  { name:'Home',        slug:'home-kitchen', emoji:'🏠', color:'from-green-400 to-emerald-500'  },
+  { name:'Beauty',      slug:'beauty',       emoji:'💄', color:'from-rose-400 to-pink-600'      },
+  { name:'Sports',      slug:'sports',       emoji:'⚽', color:'from-orange-400 to-red-500'     },
+  { name:'Books',       slug:'books',        emoji:'📚', color:'from-amber-400 to-yellow-500'   },
+  { name:'Grocery',     slug:'grocery',      emoji:'🛒', color:'from-lime-400 to-green-500'     },
+  { name:'Toys',        slug:'toys',         emoji:'🧸', color:'from-yellow-400 to-amber-500'   },
+  { name:'Appliances',  slug:'appliances',   emoji:'🔌', color:'from-cyan-400 to-blue-500'      },
+  { name:'Furniture',   slug:'furniture',    emoji:'🪑', color:'from-stone-400 to-stone-600'    },
 ]
 
 const TICKER_ITEMS = [
   '⚡ MEGA SALE — Electronics Up to 70% Off',
-  '🎁 First Order? Use Code WELCOME10 for 10% Off',
+  '🎁 First Order? Use Code BELLMAK10 for 10% Off',
   '🚚 Free Delivery on Orders Above ₹499',
   '🪙 Earn BELLMAK Coins on Every Purchase',
   '🔥 New Arrivals Daily — Fashion & Lifestyle',
-  '📱 Samsung Galaxy S23 — Lowest Price Guaranteed',
-  '⭐ Trusted by 50,000+ Customers Across India',
+  '⭐ Trusted by Customers Across India',
 ]
 
 const fmt = (n: number) => `₹${n.toLocaleString('en-IN')}`
 
-// ─── Ticker ───────────────────────────────────────────────────
 const Ticker = memo(() => (
   <div className="bg-gradient-to-r from-[#1a1a2e] via-[#16213e] to-[#1a1a2e] overflow-hidden py-2 border-b border-white/5">
     <div className="flex animate-[ticker_40s_linear_infinite] whitespace-nowrap w-max">
@@ -71,7 +49,6 @@ const Ticker = memo(() => (
 ))
 Ticker.displayName = 'Ticker'
 
-// ─── Countdown ────────────────────────────────────────────────
 const Countdown = memo(() => {
   const [t, setT] = useState({ h: 5, m: 59, s: 47 })
   useEffect(() => {
@@ -96,7 +73,6 @@ const Countdown = memo(() => {
 })
 Countdown.displayName = 'Countdown'
 
-// ─── Product Shelf ────────────────────────────────────────────
 const ProductShelf = memo(({ products, loading, count = 8 }: {
   products: any[]; loading: boolean; count?: number
 }) => {
@@ -120,13 +96,20 @@ const ProductShelf = memo(({ products, loading, count = 8 }: {
               </div>
             </div>
           ))
+          : products.length === 0
+          ? (
+            <div className="flex-1 flex flex-col items-center justify-center py-16 text-gray-400">
+              <span className="text-4xl mb-3">📦</span>
+              <p className="text-sm font-bold">No products yet</p>
+            </div>
+          )
           : products.slice(0, count).map(p => (
             <div key={p.id} className="flex-shrink-0 w-[170px] border-r border-gray-100 last:border-0 hover:bg-orange-50/30 transition-colors">
               <ProductCard product={p} />
             </div>
           ))
         }
-        {!loading && (
+        {!loading && products.length > 0 && (
           <Link href="/products"
             className="flex-shrink-0 w-[90px] flex flex-col items-center justify-center gap-2.5 bg-gradient-to-br from-orange-50 to-amber-50 hover:from-orange-100 transition-all group/va border-l border-orange-100">
             <div className="w-11 h-11 rounded-2xl bg-[#F97316] flex items-center justify-center group-hover/va:scale-110 transition-transform shadow-md shadow-orange-200">
@@ -145,7 +128,6 @@ const ProductShelf = memo(({ products, loading, count = 8 }: {
 })
 ProductShelf.displayName = 'ProductShelf'
 
-// ─── Section Header ───────────────────────────────────────────
 const SectionHeader = memo(({ icon, label, title, href, badge, timer }: {
   icon: React.ReactNode; label: string; title: string
   href: string; badge?: string; timer?: boolean
@@ -179,55 +161,31 @@ const SectionHeader = memo(({ icon, label, title, href, badge, timer }: {
 ))
 SectionHeader.displayName = 'SectionHeader'
 
-// ─── Deal Box ─────────────────────────────────────────────────
-const DealBox = memo(({ title, sub, href, products, color, emoji }: {
-  title: string; sub: string; href: string; products: any[]; color: string; emoji: string
-}) => {
-  const items = [...products.slice(0, 4)]
-  while (items.length < 4) items.push(null)
-  return (
-    <Link href={href}
-      className="bg-white overflow-hidden hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 group flex flex-col border-r border-b border-gray-100 last:border-r-0">
-      <div className={`${color} px-4 pt-4 pb-3`}>
-        <div className="flex items-start justify-between">
-          <div>
-            <p className="font-black text-gray-900 text-sm leading-tight">{title}</p>
-            <p className="text-xs text-gray-500 mt-0.5 font-medium">{sub}</p>
-          </div>
-          <span className="text-3xl group-hover:scale-125 transition-transform duration-300">{emoji}</span>
+const DealBox = memo(({ title, sub, href, color, emoji }: {
+  title: string; sub: string; href: string; color: string; emoji: string
+}) => (
+  <Link href={href}
+    className="bg-white overflow-hidden hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 group flex flex-col border-r border-b border-gray-100 last:border-r-0">
+    <div className={`${color} px-4 pt-4 pb-3`}>
+      <div className="flex items-start justify-between">
+        <div>
+          <p className="font-black text-gray-900 text-sm leading-tight">{title}</p>
+          <p className="text-xs text-gray-500 mt-0.5 font-medium">{sub}</p>
         </div>
+        <span className="text-3xl group-hover:scale-125 transition-transform duration-300">{emoji}</span>
       </div>
-      <div className="grid grid-cols-2 gap-[1px] bg-gray-100 flex-1">
-        {items.map((p, i) => (
-          <div key={i} className="bg-white aspect-square flex items-center justify-center p-2 overflow-hidden">
-            {p ? (
-              <div className="relative w-full h-full">
-                <img src={p.images?.[0]} alt={p.title}
-                  className="w-full h-full object-contain group-hover:scale-110 transition-transform duration-500" />
-                {p.discount > 0 && (
-                  <span className="absolute top-0 left-0 bg-gradient-to-r from-red-500 to-rose-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded-br-lg">
-                    -{p.discount}%
-                  </span>
-                )}
-              </div>
-            ) : (
-              <div className="w-full h-full bg-gray-50 rounded flex items-center justify-center">
-                <span className="text-2xl opacity-20">📦</span>
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
-      <div className="px-4 py-2.5 flex items-center justify-between bg-gray-50/80 border-t border-gray-100">
-        <span className="text-xs font-black text-[#F97316]">Shop Now</span>
-        <ArrowRight size={13} className="text-[#F97316] group-hover:translate-x-1.5 transition-transform" />
-      </div>
-    </Link>
-  )
-})
+    </div>
+    <div className="flex-1 flex items-center justify-center py-8">
+      <span className="text-6xl group-hover:scale-110 transition-transform duration-300">{emoji}</span>
+    </div>
+    <div className="px-4 py-2.5 flex items-center justify-between bg-gray-50/80 border-t border-gray-100">
+      <span className="text-xs font-black text-[#F97316]">Shop Now</span>
+      <ArrowRight size={13} className="text-[#F97316] group-hover:translate-x-1.5 transition-transform" />
+    </div>
+  </Link>
+))
 DealBox.displayName = 'DealBox'
 
-// ─── Category Strip ───────────────────────────────────────────
 const CategoryStrip = memo(() => (
   <div className="bg-white border-b border-gray-100 shadow-sm">
     <div className="max-w-[1440px] mx-auto px-3">
@@ -250,45 +208,22 @@ const CategoryStrip = memo(() => (
 ))
 CategoryStrip.displayName = 'CategoryStrip'
 
-// ─── Stats Bar ────────────────────────────────────────────────
-const StatsBar = memo(() => (
-  <div className="bg-gradient-to-r from-[#1a1a2e] to-[#0f3460] py-3">
-    <div className="max-w-[1440px] mx-auto px-4">
-      <div className="flex items-center justify-center gap-6 md:gap-12 overflow-x-auto scrollbar-hide">
-        {[
-          { emoji:'👥', value:'50,000+',   label:'Happy Customers' },
-          { emoji:'📦', value:'5,00,000+', label:'Products'        },
-          { emoji:'🏪', value:'10,000+',   label:'Trusted Sellers' },
-          { emoji:'🚀', value:'24h',       label:'Fast Delivery'   },
-        ].map(s => (
-          <div key={s.label} className="flex items-center gap-2 flex-shrink-0">
-            <span className="text-xl">{s.emoji}</span>
-            <div>
-              <p className="text-white font-black text-sm leading-none">{s.value}</p>
-              <p className="text-gray-400 text-[10px] font-medium mt-0.5">{s.label}</p>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  </div>
-))
-StatsBar.displayName = 'StatsBar'
-
-// ─── Main Page ────────────────────────────────────────────────
 export default function HomePage() {
-  const [featured, setFeatured] = useState<any[]>(DUMMY)
-  const [trending, setTrending] = useState<any[]>([...DUMMY].reverse())
-  const [loading,  setLoading]  = useState(false)
+  const [featured,    setFeatured]    = useState<any[]>([])
+  const [trending,    setTrending]    = useState<any[]>([])
+  const [newArrivals, setNewArrivals] = useState<any[]>([])
+  const [loading,     setLoading]     = useState(true)
 
   useEffect(() => {
     Promise.all([
       api.get('/products/featured').catch(() => null),
       api.get('/products/trending').catch(() => null),
-    ]).then(([f, t]) => {
-      if (f?.data?.data?.length) setFeatured(f.data.data)
-      if (t?.data?.data?.length) setTrending(t.data.data)
-    })
+      api.get('/products', { params: { sort: 'createdAt', limit: 12 } }).catch(() => null),
+    ]).then(([f, t, n]) => {
+      if (f?.data?.data?.length)  setFeatured(f.data.data)
+      if (t?.data?.data?.length)  setTrending(t.data.data)
+      if (n?.data?.data?.length)  setNewArrivals(n.data.data)
+    }).finally(() => setLoading(false))
   }, [])
 
   return (
@@ -296,12 +231,11 @@ export default function HomePage() {
       <Ticker />
       <div className="min-h-screen bg-[#f0f2f5]">
         <HeroCarousel />
-        <StatsBar />
         <CategoryStrip />
 
         <div className="max-w-[1440px] mx-auto px-3 py-5 space-y-5">
 
-          {/* ── Flash Deals ── */}
+          {/* Flash Deals */}
           <div className="bg-white rounded-3xl overflow-hidden shadow-sm border border-gray-100">
             <div className="relative overflow-hidden bg-gradient-to-r from-red-600 via-red-500 to-orange-500 px-5 py-4">
               <div className="absolute -right-6 -top-6 w-28 h-28 bg-white/10 rounded-full" />
@@ -326,14 +260,14 @@ export default function HomePage() {
               </div>
             </div>
             <div className="grid grid-cols-2 md:grid-cols-4">
-              <DealBox title="Electronics Up to 70% off" sub="Mobiles, Laptops & more" href="/category/electronics" products={DUMMY.slice(0,4)}  color="bg-blue-50"   emoji="💻" />
-              <DealBox title="Fashion Min. 50% off"       sub="Top brands & trends"    href="/category/fashion"     products={DUMMY.slice(3,7)}  color="bg-pink-50"   emoji="👗" />
-              <DealBox title="Home from ₹199"            sub="Kitchen, decor & more"  href="/category/home-kitchen"products={DUMMY.slice(5,9)}  color="bg-green-50"  emoji="🏠" />
-              <DealBox title="Beauty & Skincare"         sub="Genuine products only"  href="/category/beauty"      products={DUMMY.slice(8,12)} color="bg-purple-50" emoji="💄" />
+              <DealBox title="Electronics Up to 70% off" sub="Mobiles, Laptops & more" href="/category/electronics" color="bg-blue-50"   emoji="💻" />
+              <DealBox title="Fashion Min. 50% off"       sub="Top brands & trends"    href="/category/fashion"     color="bg-pink-50"   emoji="👗" />
+              <DealBox title="Home from ₹199"            sub="Kitchen, decor & more"  href="/category/home-kitchen"color="bg-green-50"  emoji="🏠" />
+              <DealBox title="Beauty & Skincare"         sub="Genuine products only"  href="/category/beauty"      color="bg-purple-50" emoji="💄" />
             </div>
           </div>
 
-          {/* ── Featured Products ── */}
+          {/* Featured Products */}
           <div className="bg-white rounded-3xl shadow-sm overflow-hidden border border-gray-100">
             <SectionHeader
               icon={<Star size={16} className="text-white fill-white" />}
@@ -345,7 +279,7 @@ export default function HomePage() {
             <ProductShelf products={featured} loading={loading} count={10} />
           </div>
 
-          {/* ── Promo Banners ── */}
+          {/* Promo Banners */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <Link href="/products?discount=30"
               className="md:col-span-2 relative overflow-hidden rounded-3xl h-40 flex items-center px-8 group"
@@ -353,7 +287,6 @@ export default function HomePage() {
               <div className="absolute right-0 top-0 bottom-0 w-48 flex items-center justify-center">
                 <span className="text-[110px] opacity-10 group-hover:opacity-20 group-hover:scale-110 transition-all duration-500 select-none">📱</span>
               </div>
-              <div className="absolute inset-0" style={{ background:'radial-gradient(ellipse at 30% 50%,rgba(249,115,22,0.15) 0%,transparent 60%)' }} />
               <div className="relative z-10">
                 <div className="inline-flex items-center gap-1.5 bg-[#F97316]/20 border border-[#F97316]/30 text-[#F97316] text-[10px] font-black px-3 py-1 rounded-full mb-3">
                   <Zap size={9} fill="currentColor" /> TODAY ONLY
@@ -392,21 +325,19 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* ── New Arrivals ── */}
+          {/* New Arrivals — sorted by createdAt desc */}
           <div className="bg-white rounded-3xl shadow-sm overflow-hidden border border-gray-100">
             <SectionHeader
               icon={<Sparkles size={16} className="text-white" />}
               label="Just Landed"
               title="New Arrivals ✨"
-              href="/products?sort=newest"
+              href="/products?sort=createdAt"
             />
-            <ProductShelf products={[...DUMMY].reverse()} loading={loading} count={10} />
+            <ProductShelf products={newArrivals} loading={loading} count={10} />
           </div>
 
-          {/* ── Budget + Trending ── */}
+          {/* Budget + Trending */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-
-            {/* Budget — compact 2x2 grid */}
             <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-4">
               <div className="flex items-center gap-2 mb-3">
                 <Percent size={13} className="text-[#F97316]" />
@@ -428,7 +359,7 @@ export default function HomePage() {
               </div>
             </div>
 
-            {/* Trending — compact list */}
+            {/* Trending Now */}
             <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden lg:col-span-2">
               <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
                 <div className="flex items-center gap-2.5">
@@ -443,14 +374,36 @@ export default function HomePage() {
                 </Link>
               </div>
               <div className="divide-y divide-gray-50">
-                {(trending.length ? trending : DUMMY).slice(0, 5).map((p, i) => {
+                {loading ? (
+                  [...Array(5)].map((_, i) => (
+                    <div key={i} className="flex items-center gap-3 px-4 py-3 animate-pulse">
+                      <div className="w-7 h-4 bg-gray-100 rounded" />
+                      <div className="w-10 h-10 bg-gray-100 rounded-xl" />
+                      <div className="flex-1 space-y-1">
+                        <div className="h-3 bg-gray-100 rounded w-3/4" />
+                        <div className="h-3 bg-gray-100 rounded w-1/4" />
+                      </div>
+                    </div>
+                  ))
+                ) : trending.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-10 text-gray-400">
+                    <span className="text-3xl mb-2">📈</span>
+                    <p className="text-sm">No trending products yet</p>
+                  </div>
+                ) : trending.slice(0, 5).map((p, i) => {
                   const medals = ['🥇','🥈','🥉','4️⃣','5️⃣']
+                  const img = p.images?.[0] || 'https://placehold.co/40x40/f1f5f9/94a3b8?text=No+Img'
                   return (
                     <Link key={p.id} href={`/products/${p.slug}`}
                       className="flex items-center gap-3 px-4 py-3 hover:bg-orange-50/40 transition-colors group">
                       <span className="text-base w-7 text-center flex-shrink-0">{medals[i]}</span>
                       <div className="w-10 h-10 rounded-xl overflow-hidden bg-gray-50 border border-gray-100 flex-shrink-0">
-                        <img src={p.images[0]} alt={p.title} className="w-full h-full object-contain p-1 group-hover:scale-110 transition-transform" />
+                        <img
+                          src={img}
+                          alt={p.title}
+                          className="w-full h-full object-contain p-1 group-hover:scale-110 transition-transform"
+                          onError={(e) => { (e.target as HTMLImageElement).src = 'https://placehold.co/40x40/f1f5f9/94a3b8?text=?' }}
+                        />
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-xs font-bold text-gray-800 line-clamp-1 group-hover:text-[#F97316] transition-colors">{p.title}</p>
@@ -463,7 +416,7 @@ export default function HomePage() {
                       </div>
                       <div className="flex items-center gap-0.5 flex-shrink-0">
                         <Star size={10} className="text-yellow-400 fill-yellow-400" />
-                        <span className="text-[11px] font-bold text-gray-500">{p.avgRating}</span>
+                        <span className="text-[11px] font-bold text-gray-500">{p.avgRating?.toFixed(1)}</span>
                       </div>
                     </Link>
                   )
@@ -472,22 +425,14 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* ── Live Shopping ── */}
+          {/* Live Shopping */}
           <div className="rounded-3xl overflow-hidden relative bg-gradient-to-r from-red-600 via-red-500 to-[#F97316] shadow-lg shadow-red-200">
-            <div className="absolute inset-0" style={{ background:'radial-gradient(ellipse at 80% 50%,rgba(255,255,255,0.12) 0%,transparent 50%)' }} />
-            <div className="absolute -right-8 -top-8 w-32 h-32 bg-white/10 rounded-full" />
             <div className="relative z-10 p-5 md:p-7 flex flex-col md:flex-row items-center justify-between gap-5">
               <div className="flex items-center gap-4">
                 <div className="w-13 h-13 bg-white/20 rounded-2xl flex items-center justify-center flex-shrink-0 border border-white/20 p-3">
                   <Radio size={22} className="text-white" />
                 </div>
                 <div className="text-white">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="flex items-center gap-1.5 bg-white/20 text-[10px] font-black px-2.5 py-1 rounded-full">
-                      <span className="w-1.5 h-1.5 bg-white rounded-full animate-ping" /> LIVE NOW
-                    </span>
-                    <span className="text-[10px] text-red-100">3 streams active</span>
-                  </div>
                   <h3 className="text-xl md:text-2xl font-black leading-tight">Live Shopping Events</h3>
                   <p className="text-red-100 text-xs mt-0.5">Watch. Discover. Buy — Exclusive live-only prices!</p>
                 </div>
@@ -505,7 +450,7 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* ── Trust Strip ── */}
+          {/* Trust Strip */}
           <div className="bg-white rounded-3xl shadow-sm px-5 py-5 border border-gray-100">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               {[
@@ -527,10 +472,9 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* ── Sell CTA — Compact ── */}
+          {/* Sell CTA */}
           <div className="rounded-3xl overflow-hidden bg-[#1a1a2e] border border-white/5">
             <div className="relative p-5 md:p-6 flex flex-col md:flex-row items-center justify-between gap-4">
-              <div className="absolute inset-0 opacity-50" style={{ background:'radial-gradient(ellipse at 15% 50%,rgba(249,115,22,0.08) 0%,transparent 60%)' }} />
               <div className="relative flex items-center gap-4">
                 <div className="w-12 h-12 bg-gradient-to-br from-[#F97316] to-orange-600 rounded-2xl flex items-center justify-center flex-shrink-0 text-2xl shadow-lg shadow-orange-500/20">
                   🚀
@@ -542,23 +486,13 @@ export default function HomePage() {
                   <h3 className="text-base md:text-lg font-black text-white leading-tight">
                     Grow Your Business. <span className="text-[#F97316]">Zero Investment.</span>
                   </h3>
-                  <p className="text-gray-500 text-xs mt-0.5">Register free · List products · 50,000+ buyers</p>
+                  <p className="text-gray-500 text-xs mt-0.5">Register free · List products · Customers across India</p>
                 </div>
               </div>
-              <div className="relative flex items-center gap-4 flex-shrink-0">
-                <div className="hidden md:flex items-center gap-4">
-                  {[{v:'₹0',l:'Register'},{v:'0%',l:'Commission'},{v:'24/7',l:'Support'}].map(s => (
-                    <div key={s.l} className="text-center">
-                      <p className="text-sm font-black text-[#F97316]">{s.v}</p>
-                      <p className="text-[9px] text-gray-500">{s.l}</p>
-                    </div>
-                  ))}
-                </div>
-                <Link href="/sell"
-                  className="flex items-center gap-2 bg-gradient-to-r from-[#F97316] to-orange-500 text-white font-black text-sm px-5 py-2.5 rounded-2xl hover:scale-105 transition-transform shadow-lg shadow-orange-500/20 whitespace-nowrap">
-                  Start Free <ArrowRight size={13} />
-                </Link>
-              </div>
+              <Link href="/sell"
+                className="flex items-center gap-2 bg-gradient-to-r from-[#F97316] to-orange-500 text-white font-black text-sm px-5 py-2.5 rounded-2xl hover:scale-105 transition-transform shadow-lg shadow-orange-500/20 whitespace-nowrap">
+                Start Free <ArrowRight size={13} />
+              </Link>
             </div>
           </div>
 

@@ -58,14 +58,14 @@ export const getAdminDashboard = async (req: AuthRequest, res: Response, next: N
 export const getAllUsers = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { search, role, page = '1', limit = '20' } = req.query
-    const pageNum = parseInt(page as string)
+    const pageNum  = parseInt(page as string)
     const limitNum = parseInt(limit as string)
 
     const where: any = {}
     if (role) where.role = role
     if (search) {
       where.OR = [
-        { name: { contains: search as string, mode: 'insensitive' } },
+        { name:  { contains: search as string, mode: 'insensitive' } },
         { email: { contains: search as string, mode: 'insensitive' } },
         { phone: { contains: search as string } }
       ]
@@ -105,7 +105,7 @@ export const changeUserRole = async (req: AuthRequest, res: Response, next: Next
     }
 
     const user = await prisma.user.update({
-      where: { id: req.params.id },
+      where: { id: req.params.id as string },
       data: { role },
       select: { id: true, name: true, email: true, role: true }
     })
@@ -129,7 +129,7 @@ export const toggleUserStatus = async (req: AuthRequest, res: Response, next: Ne
     const { isActive } = req.body
     if (req.params.id === req.user!.id) throw new AppError('Aap khud ko deactivate nahi kar sakte!', 403)
     const user = await prisma.user.update({
-      where: { id: req.params.id },
+      where: { id: req.params.id as string },
       data: { isActive },
       select: { id: true, name: true, isActive: true }
     })
@@ -140,10 +140,10 @@ export const toggleUserStatus = async (req: AuthRequest, res: Response, next: Ne
 // @route PUT /api/admin/users/:id/ban
 export const banUser = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const user = await prisma.user.findUnique({ where: { id: req.params.id } })
+    const user = await prisma.user.findUnique({ where: { id: req.params.id as string } })
     if (!user) throw new AppError('User not found', 404)
     const updated = await prisma.user.update({
-      where: { id: req.params.id },
+      where: { id: req.params.id as string },
       data: { isActive: !user.isActive }
     })
     sendResponse(res, 200, true, updated.isActive ? 'User unbanned' : 'User banned', { isActive: updated.isActive })
@@ -153,7 +153,10 @@ export const banUser = async (req: AuthRequest, res: Response, next: NextFunctio
 // @route PATCH /api/admin/users/:id
 export const updateUser = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const user = await prisma.user.update({ where: { id: req.params.id }, data: req.body })
+    const user = await prisma.user.update({
+      where: { id: req.params.id as string },
+      data: req.body
+    })
     sendResponse(res, 200, true, 'User updated', user)
   } catch (err) { next(err) }
 }
@@ -162,7 +165,7 @@ export const updateUser = async (req: AuthRequest, res: Response, next: NextFunc
 export const getAllSellers = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { kycStatus, page = '1', limit = '20' } = req.query
-    const pageNum = parseInt(page as string)
+    const pageNum  = parseInt(page as string)
     const limitNum = parseInt(limit as string)
 
     const where: any = {}
@@ -194,7 +197,7 @@ export const approveSeller = async (req: AuthRequest, res: Response, next: NextF
   try {
     const { approved } = req.body
     const seller = await prisma.seller.update({
-      where: { id: req.params.id },
+      where: { id: req.params.id as string },
       data: { isApproved: approved, kycStatus: approved ? 'APPROVED' : 'REJECTED' }
     })
     sendResponse(res, 200, true, approved ? 'Seller approved' : 'Seller rejected', seller)
@@ -205,12 +208,12 @@ export const approveSeller = async (req: AuthRequest, res: Response, next: NextF
 export const getAllProducts = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { approved, page = '1', limit = '50' } = req.query
-    const pageNum = parseInt(page as string)
+    const pageNum  = parseInt(page as string)
     const limitNum = parseInt(limit as string)
 
     const where: any = {}
     if (approved === 'false') where.isApproved = false
-    if (approved === 'true') where.isApproved = true
+    if (approved === 'true')  where.isApproved = true
 
     const [products, total] = await Promise.all([
       prisma.product.findMany({
@@ -218,7 +221,7 @@ export const getAllProducts = async (req: AuthRequest, res: Response, next: Next
         skip: (pageNum - 1) * limitNum,
         take: limitNum,
         include: {
-          seller: { select: { businessName: true } },
+          seller:   { select: { businessName: true } },
           category: { select: { name: true } }
         },
         orderBy: { createdAt: 'desc' }
@@ -237,7 +240,7 @@ export const getAllProducts = async (req: AuthRequest, res: Response, next: Next
 export const approveProduct = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const product = await prisma.product.update({
-      where: { id: req.params.id },
+      where: { id: req.params.id as string },
       data: { isApproved: req.body.approved }
     })
     sendResponse(res, 200, true, req.body.approved ? 'Product approved' : 'Product rejected', product)
@@ -247,10 +250,10 @@ export const approveProduct = async (req: AuthRequest, res: Response, next: Next
 // @route PUT /api/admin/products/:id/feature
 export const featureProduct = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const product = await prisma.product.findUnique({ where: { id: req.params.id } })
+    const product = await prisma.product.findUnique({ where: { id: req.params.id as string } })
     if (!product) throw new AppError('Product not found', 404)
     const updated = await prisma.product.update({
-      where: { id: req.params.id },
+      where: { id: req.params.id as string },
       data: { isFeatured: !product.isFeatured }
     })
     sendResponse(res, 200, true, 'Product featured status updated', updated)
@@ -260,7 +263,10 @@ export const featureProduct = async (req: AuthRequest, res: Response, next: Next
 // @route PATCH /api/admin/products/:id
 export const updateProduct = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const product = await prisma.product.update({ where: { id: req.params.id }, data: req.body })
+    const product = await prisma.product.update({
+      where: { id: req.params.id as string },
+      data: req.body
+    })
     sendResponse(res, 200, true, 'Product updated', product)
   } catch (err) { next(err) }
 }
@@ -268,7 +274,7 @@ export const updateProduct = async (req: AuthRequest, res: Response, next: NextF
 // @route DELETE /api/admin/products/:id
 export const deleteProduct = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    await prisma.product.delete({ where: { id: req.params.id } })
+    await prisma.product.delete({ where: { id: req.params.id as string } })
     sendResponse(res, 200, true, 'Product deleted')
   } catch (err) { next(err) }
 }
@@ -277,7 +283,7 @@ export const deleteProduct = async (req: AuthRequest, res: Response, next: NextF
 export const getAllOrders = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { status, page = '1', limit = '20', search } = req.query
-    const pageNum = parseInt(page as string)
+    const pageNum  = parseInt(page as string)
     const limitNum = parseInt(limit as string)
 
     const where: any = {}
@@ -285,7 +291,7 @@ export const getAllOrders = async (req: AuthRequest, res: Response, next: NextFu
     if (search) {
       where.OR = [
         { orderId: { contains: search as string, mode: 'insensitive' } },
-        { user: { name: { contains: search as string, mode: 'insensitive' } } },
+        { user: { name:  { contains: search as string, mode: 'insensitive' } } },
         { user: { phone: { contains: search as string } } }
       ]
     }
@@ -297,7 +303,7 @@ export const getAllOrders = async (req: AuthRequest, res: Response, next: NextFu
         skip: (pageNum - 1) * limitNum,
         take: limitNum,
         include: {
-          user: { select: { name: true, email: true, phone: true } },
+          user:  { select: { name: true, email: true, phone: true } },
           items: true
         }
       }),
@@ -319,21 +325,21 @@ export const updateOrderStatus = async (req: AuthRequest, res: Response, next: N
     if (!validStatuses.includes(status)) throw new AppError('Invalid status', 400)
 
     const order = await prisma.order.findUnique({
-      where: { id: req.params.id },
+      where: { id: req.params.id as string },
       include: { items: true }
     })
     if (!order) throw new AppError('Order not found', 404)
 
     const updateData: any = { status }
     if (status === 'DELIVERED') {
-      updateData.deliveredAt = new Date()
+      updateData.deliveredAt   = new Date()
       updateData.paymentStatus = order.paymentMethod === 'COD' ? 'COD_PENDING_CONFIRMATION' : 'PAID'
     }
     if (status === 'CANCELLED') {
       for (const item of order.items) {
         await prisma.product.update({
           where: { id: item.productId },
-          data: { stock: { increment: item.quantity } }
+          data:  { stock: { increment: item.quantity } }
         })
       }
     }
@@ -362,7 +368,7 @@ export const createBanner = async (req: Request, res: Response, next: NextFuncti
 // @route DELETE /api/admin/banners/:id
 export const deleteBanner = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    await prisma.banner.delete({ where: { id: req.params.id } })
+    await prisma.banner.delete({ where: { id: req.params.id as string } })
     sendResponse(res, 200, true, 'Banner deleted')
   } catch (err) { next(err) }
 }
@@ -382,5 +388,26 @@ export const createCoupon = async (req: Request, res: Response, next: NextFuncti
       data: { ...req.body, code: req.body.code.toUpperCase() }
     })
     sendResponse(res, 201, true, 'Coupon created', coupon)
+  } catch (err) { next(err) }
+}
+
+// @route PUT /api/admin/coupons/:id/toggle
+export const toggleCoupon = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const coupon = await prisma.coupon.findUnique({ where: { id: req.params.id as string } })
+    if (!coupon) throw new AppError('Coupon not found', 404)
+    const updated = await prisma.coupon.update({
+      where: { id: req.params.id as string },
+      data:  { isActive: !coupon.isActive }
+    })
+    sendResponse(res, 200, true, updated.isActive ? 'Coupon activated' : 'Coupon deactivated', updated)
+  } catch (err) { next(err) }
+}
+
+// @route DELETE /api/admin/coupons/:id
+export const deleteCoupon = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    await prisma.coupon.delete({ where: { id: req.params.id as string } })
+    sendResponse(res, 200, true, 'Coupon deleted')
   } catch (err) { next(err) }
 }

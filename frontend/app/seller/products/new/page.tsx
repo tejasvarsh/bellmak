@@ -4,209 +4,182 @@ import { useRouter } from 'next/navigation'
 import { useAuthStore } from '@/lib/store'
 import api from '@/lib/api'
 import toast from 'react-hot-toast'
-import {
-  ArrowLeft, Save, Package, Tag, IndianRupee,
-  Box, Image as ImageIcon, Loader2, Trash2, Plus,
-  Sparkles, Upload, X
-} from 'lucide-react'
-import Link from 'next/link'
+import { ArrowLeft, Upload, Plus, X, Loader2, Image as ImageIcon, Link } from 'lucide-react'
+import NextLink from 'next/link'
 
 const CATEGORIES = [
-  'Electronics','Mobile Phones','Laptops','Fashion','Men Clothing',
-  'Women Clothing','Home & Kitchen','Beauty & Health','Sports & Fitness',
-  'Books','Toys & Games','Grocery','Jewellery','Furniture','Automotive'
+  'Mobiles', 'Electronics', 'Fashion', 'Home & Kitchen',
+  'Beauty', 'Sports', 'Books', 'Toys', 'Grocery', 'Appliances'
 ]
 
-interface ProductForm {
-  title: string; description: string; price: string; mrp: string
-  stock: string; brand: string; category: string
-  images: string[]; specifications: Record<string, string>
-}
-
-export default function NewProductPage() {
+export default function AddProduct() {
   const { isLoggedIn } = useAuthStore()
-  const router  = useRouter()
-  const fileRef = useRef<HTMLInputElement>(null)
+  const router = useRouter()
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const [saving,      setSaving]      = useState(false)
-  const [uploading,   setUploading]   = useState(false)
-  const [newSpecKey,  setNewSpecKey]  = useState('')
-  const [newSpecVal,  setNewSpecVal]  = useState('')
-  const [dragOver,    setDragOver]    = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [uploading, setUploading] = useState(false)
+  const [imageUrl, setImageUrl] = useState('')
+  const [imageTab, setImageTab] = useState<'gallery' | 'url'>('gallery')
 
-  const [form, setForm] = useState<ProductForm>({
-    title:'', description:'', price:'', mrp:'',
-    stock:'', brand:'', category:'', images:[], specifications:{}
+  const [form, setForm] = useState({
+    title: '',
+    description: '',
+    price: '',
+    mrp: '',
+    stock: '',
+    brand: '',
+    category: '',
+    images: [] as string[],
+    isAssured: false,
   })
 
   useEffect(() => {
     if (!isLoggedIn) router.push('/login')
   }, [isLoggedIn])
 
-  // ✅ Upload images from gallery
+  const set = (key: string, value: any) =>
+    setForm(prev => ({ ...prev, [key]: value }))
+
+  // Gallery se upload karo (file → base64 → cloudinary)
   const handleFileUpload = async (files: FileList | null) => {
     if (!files || files.length === 0) return
-    const remaining = 6 - form.images.length
-    if (remaining <= 0) { toast.error('Maximum 6 images allowed'); return }
+    if (form.images.length + files.length > 5) {
+      toast.error('Max 5 images allowed')
+      return
+    }
 
-    const toUpload = Array.from(files).slice(0, remaining)
     setUploading(true)
-
-    const uploaded: string[] = []
-    for (const file of toUpload) {
-      if (!file.type.startsWith('image/')) { toast.error(`${file.name} image nahi hai`); continue }
-      if (file.size > 5 * 1024 * 1024) { toast.error(`${file.name} 5MB se bada hai`); continue }
-
-      try {
-        const formData = new FormData()
-        formData.append('image', file)
-        const res = await api.post('/upload/image', formData, {
-          headers: { 'Content-Type': 'multipart/form-data' }
-        })
-        if (res.data.data?.url) uploaded.push(res.data.data.url)
-        else {
-          // Fallback: use object URL for preview if upload API not ready
-          uploaded.push(URL.createObjectURL(file))
-        }
-      } catch {
-        // Fallback: local preview
-        uploaded.push(URL.createObjectURL(file))
-      }
-    }
-
-    if (uploaded.length > 0) {
-      setForm(f => ({ ...f, images: [...f.images, ...uploaded] }))
-      toast.success(`${uploaded.length} image${uploaded.length > 1 ? 's' : ''} uploaded!`)
-    }
-    setUploading(false)
-    if (fileRef.current) fileRef.current.value = ''
-  }
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault()
-    setDragOver(false)
-    handleFileUpload(e.dataTransfer.files)
-  }
-
-  const removeImage = (idx: number) => {
-    setForm(f => ({ ...f, images: f.images.filter((_, i) => i !== idx) }))
-  }
-
-  const moveImage = (from: number, to: number) => {
-    const imgs = [...form.images]
-    const [moved] = imgs.splice(from, 1)
-    imgs.splice(to, 0, moved)
-    setForm(f => ({ ...f, images: imgs }))
-  }
-
-  const addSpec = () => {
-    if (!newSpecKey.trim() || !newSpecVal.trim()) { toast.error('Key aur value dono bharo'); return }
-    setForm(f => ({ ...f, specifications: { ...f.specifications, [newSpecKey.trim()]: newSpecVal.trim() } }))
-    setNewSpecKey(''); setNewSpecVal('')
-  }
-
-  const removeSpec = (key: string) => {
-    setForm(f => { const s = { ...f.specifications }; delete s[key]; return { ...f, specifications: s } })
-  }
-
-  const handleSave = async () => {
-    if (!form.title.trim())                        { toast.error('Title required'); return }
-    if (!form.price || !form.mrp)                  { toast.error('Price aur MRP required'); return }
-    if (Number(form.price) > Number(form.mrp))     { toast.error('Price MRP se zyada nahi ho sakta'); return }
-    if (!form.stock)                               { toast.error('Stock required'); return }
-    if (!form.category)                            { toast.error('Category select karo'); return }
-    if (form.images.length === 0)                  { toast.error('Kam se kam 1 image add karo'); return }
-
-    setSaving(true)
     try {
-      await api.post('/seller/products', {
-        title:          form.title,
-        description:    form.description,
-        price:          Number(form.price),
-        mrp:            Number(form.mrp),
-        stock:          Number(form.stock),
-        brand:          form.brand,
-        category:       form.category,
-        images:         form.images,
-        specifications: form.specifications,
-        isAssured:      false  // Only admin can set this
+      const fileArray = Array.from(files)
+      const base64Array: string[] = []
+
+      for (const file of fileArray) {
+        if (file.size > 5 * 1024 * 1024) {
+          toast.error(`${file.name} too large (max 5MB)`)
+          continue
+        }
+        const base64 = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader()
+          reader.onload = () => resolve(reader.result as string)
+          reader.onerror = reject
+          reader.readAsDataURL(file)
+        })
+        base64Array.push(base64)
+      }
+
+      if (base64Array.length === 0) return
+
+      const res = await api.post('/upload/multiple', {
+        images: base64Array,
+        folder: 'bellmak/products'
       })
-      toast.success('Product published! 🎉')
-      router.push('/seller/products')
+
+      const urls = res.data.data.urls
+      set('images', [...form.images, ...urls])
+      toast.success(`${urls.length} image${urls.length > 1 ? 's' : ''} upload ho gaya!`)
     } catch (err: any) {
-      toast.error(err?.response?.data?.message || 'Failed to create product')
-    } finally { setSaving(false) }
+      toast.error(err?.response?.data?.message || 'Upload fail hua')
+    } finally {
+      setUploading(false)
+      if (fileInputRef.current) fileInputRef.current.value = ''
+    }
   }
+
+  // URL se add karo
+  const addImageUrl = () => {
+    if (!imageUrl.trim()) return
+    if (form.images.length >= 5) { toast.error('Max 5 images allowed'); return }
+    if (!imageUrl.startsWith('http')) { toast.error('Valid URL dalo (https://...)'); return }
+    set('images', [...form.images, imageUrl.trim()])
+    setImageUrl('')
+    toast.success('Image add ho gaya!')
+  }
+
+  const removeImage = (idx: number) =>
+    set('images', form.images.filter((_, i) => i !== idx))
 
   const discount = form.price && form.mrp
-    ? Math.round(((Number(form.mrp) - Number(form.price)) / Number(form.mrp)) * 100)
+    ? Math.max(0, Math.round(((Number(form.mrp) - Number(form.price)) / Number(form.mrp)) * 100))
     : 0
 
-  const inputCls = "w-full px-4 py-3 border-2 border-gray-100 rounded-xl text-sm outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100 bg-gray-50 focus:bg-white transition-all font-medium"
-  const labelCls = "text-xs font-black text-gray-500 uppercase tracking-wider block mb-2"
+  const handleSubmit = async () => {
+    if (!form.title || !form.price || !form.mrp || !form.stock || !form.category) {
+      toast.error('Saare required fields bharo')
+      return
+    }
+    if (Number(form.price) > Number(form.mrp)) {
+      toast.error('Price, MRP se zyada nahi ho sakta')
+      return
+    }
+
+    try {
+      setLoading(true)
+      await api.post('/seller/products', {
+        ...form,
+        price: Number(form.price),
+        mrp: Number(form.mrp),
+        stock: Number(form.stock),
+      })
+      toast.success('Product add ho gaya! 🎉')
+      router.push('/seller/products')
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Product add nahi hua')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   return (
-    <div className="min-h-screen bg-[#f4f5f7]">
+    <div className="min-h-screen bg-gray-50">
       <div className="max-w-3xl mx-auto px-4 py-8">
 
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-3">
-            <Link href="/seller/products"
-              className="w-10 h-10 bg-white rounded-2xl flex items-center justify-center shadow-sm border border-gray-100 hover:bg-gray-50 transition-colors">
-              <ArrowLeft size={18} className="text-gray-600" />
-            </Link>
-            <div>
-              <h1 className="text-xl font-black text-gray-900">Add New Product</h1>
-              <p className="text-xs text-gray-400 mt-0.5">Sari details sahi se bharo</p>
-            </div>
+        <div className="flex items-center gap-4 mb-8">
+          <NextLink href="/seller/products"
+            className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-sm border border-gray-100 hover:border-orange-200 transition-colors">
+            <ArrowLeft size={18} className="text-gray-600" />
+          </NextLink>
+          <div>
+            <h1 className="text-2xl font-black text-gray-800">➕ New Product</h1>
+            <p className="text-gray-500 text-sm">Product add karo — turant live ho jaayega</p>
           </div>
-          <button onClick={handleSave} disabled={saving || uploading}
-            className="flex items-center gap-2 px-5 py-2.5 bg-orange-500 hover:bg-orange-600 text-white font-black rounded-2xl transition-all disabled:opacity-60 shadow-md shadow-orange-200">
-            {saving
-              ? <><Loader2 size={15} className="animate-spin" /> Publishing...</>
-              : <><Sparkles size={15} /> Publish Product</>}
-          </button>
         </div>
 
-        <div className="space-y-4">
+        <div className="space-y-5">
 
-          {/* ── Basic Info ── */}
-          <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6">
-            <div className="flex items-center gap-2 mb-5">
-              <div className="w-8 h-8 bg-blue-50 rounded-xl flex items-center justify-center">
-                <Package size={16} className="text-blue-600" />
-              </div>
-              <h2 className="font-black text-gray-900">Basic Information</h2>
-            </div>
+          {/* Basic Info */}
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+            <h2 className="font-black text-gray-800 mb-4">📝 Basic Info</h2>
             <div className="space-y-4">
               <div>
-                <label className={labelCls}>Product Title *</label>
-                <input type="text" value={form.title}
-                  onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
-                  placeholder="e.g. Samsung Galaxy S24 Ultra 256GB"
-                  className={inputCls} />
+                <label className="text-xs font-bold text-gray-600 uppercase tracking-wide mb-1.5 block">
+                  Product Title <span className="text-red-500">*</span>
+                </label>
+                <input type="text" value={form.title} onChange={e => set('title', e.target.value)}
+                  placeholder="e.g. Samsung Galaxy S24 256GB Black"
+                  className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100 transition-all" />
               </div>
               <div>
-                <label className={labelCls}>Description</label>
-                <textarea value={form.description}
-                  onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
-                  placeholder="Product ke baare mein detail mein likho — features, material, size, etc."
-                  rows={4} className={`${inputCls} resize-none`} />
+                <label className="text-xs font-bold text-gray-600 uppercase tracking-wide mb-1.5 block">Description</label>
+                <textarea value={form.description} onChange={e => set('description', e.target.value)}
+                  placeholder="Product ki details, features, specifications..."
+                  rows={4}
+                  className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100 transition-all resize-none" />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className={labelCls}>Brand</label>
-                  <input type="text" value={form.brand}
-                    onChange={e => setForm(f => ({ ...f, brand: e.target.value }))}
-                    placeholder="e.g. Samsung, Nike, Sony"
-                    className={inputCls} />
+                  <label className="text-xs font-bold text-gray-600 uppercase tracking-wide mb-1.5 block">Brand</label>
+                  <input type="text" value={form.brand} onChange={e => set('brand', e.target.value)}
+                    placeholder="e.g. Samsung, Nike"
+                    className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100 transition-all" />
                 </div>
                 <div>
-                  <label className={labelCls}>Category *</label>
-                  <select value={form.category}
-                    onChange={e => setForm(f => ({ ...f, category: e.target.value }))}
-                    className={inputCls}>
+                  <label className="text-xs font-bold text-gray-600 uppercase tracking-wide mb-1.5 block">
+                    Category <span className="text-red-500">*</span>
+                  </label>
+                  <select value={form.category} onChange={e => set('category', e.target.value)}
+                    className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100 transition-all bg-white">
                     <option value="">Select category</option>
                     {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
                   </select>
@@ -215,211 +188,158 @@ export default function NewProductPage() {
             </div>
           </div>
 
-          {/* ── Pricing ── */}
-          <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6">
-            <div className="flex items-center gap-2 mb-5">
-              <div className="w-8 h-8 bg-green-50 rounded-xl flex items-center justify-center">
-                <IndianRupee size={16} className="text-green-600" />
-              </div>
-              <h2 className="font-black text-gray-900">Pricing & Stock</h2>
-            </div>
-            <div className="grid grid-cols-3 gap-4">
+          {/* Pricing */}
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+            <h2 className="font-black text-gray-800 mb-4">💰 Pricing & Stock</h2>
+            <div className="grid grid-cols-3 gap-4 mb-4">
               <div>
-                <label className={labelCls}>Selling Price (₹) *</label>
-                <input type="number" value={form.price}
-                  onChange={e => setForm(f => ({ ...f, price: e.target.value }))}
-                  placeholder="0" min="0" className={inputCls} />
+                <label className="text-xs font-bold text-gray-600 uppercase tracking-wide mb-1.5 block">
+                  MRP (₹) <span className="text-red-500">*</span>
+                </label>
+                <input type="number" value={form.mrp} onChange={e => set('mrp', e.target.value)}
+                  placeholder="0" min="0"
+                  className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100 transition-all" />
               </div>
               <div>
-                <label className={labelCls}>MRP (₹) *</label>
-                <input type="number" value={form.mrp}
-                  onChange={e => setForm(f => ({ ...f, mrp: e.target.value }))}
-                  placeholder="0" min="0" className={inputCls} />
+                <label className="text-xs font-bold text-gray-600 uppercase tracking-wide mb-1.5 block">
+                  Selling Price (₹) <span className="text-red-500">*</span>
+                </label>
+                <input type="number" value={form.price} onChange={e => set('price', e.target.value)}
+                  placeholder="0" min="0"
+                  className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100 transition-all" />
               </div>
               <div>
-                <label className={labelCls}>Stock (units) *</label>
-                <input type="number" value={form.stock}
-                  onChange={e => setForm(f => ({ ...f, stock: e.target.value }))}
-                  placeholder="0" min="0" className={inputCls} />
+                <label className="text-xs font-bold text-gray-600 uppercase tracking-wide mb-1.5 block">
+                  Stock <span className="text-red-500">*</span>
+                </label>
+                <input type="number" value={form.stock} onChange={e => set('stock', e.target.value)}
+                  placeholder="0" min="0"
+                  className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100 transition-all" />
               </div>
             </div>
             {discount > 0 && (
-              <div className="mt-3 inline-flex items-center gap-2 bg-green-50 border border-green-100 text-green-700 text-xs font-bold px-3 py-1.5 rounded-xl">
-                <Tag size={12} /> {discount}% discount — Customer ko dikhega
+              <div className="bg-green-50 border border-green-100 rounded-xl px-4 py-3 flex items-center gap-2 mb-4">
+                <span className="text-green-600 font-black text-lg">{discount}% off</span>
+                <span className="text-green-600 text-sm">— Customer ko dikhega</span>
               </div>
             )}
-            {form.price && form.mrp && Number(form.price) > Number(form.mrp) && (
-              <div className="mt-3 inline-flex items-center gap-2 bg-red-50 border border-red-100 text-red-600 text-xs font-bold px-3 py-1.5 rounded-xl">
-                ⚠️ Price MRP se zyada nahi ho sakta
+            <label className="flex items-center gap-3 cursor-pointer">
+              <div className={`w-12 h-6 rounded-full transition-colors relative ${form.isAssured ? 'bg-orange-500' : 'bg-gray-200'}`}
+                onClick={() => set('isAssured', !form.isAssured)}>
+                <div className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${form.isAssured ? 'translate-x-7' : 'translate-x-1'}`} />
               </div>
-            )}
+              <div>
+                <p className="font-bold text-sm text-gray-700">Bellmak Assured</p>
+                <p className="text-xs text-gray-400">Quality checked badge</p>
+              </div>
+            </label>
           </div>
 
-          {/* ── Product Images ── */}
-          <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 bg-purple-50 rounded-xl flex items-center justify-center">
-                  <ImageIcon size={16} className="text-purple-600" />
-                </div>
-                <h2 className="font-black text-gray-900">Product Images</h2>
-                <span className="text-xs font-bold text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">
-                  {form.images.length}/6
-                </span>
-              </div>
+          {/* Images */}
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+            <h2 className="font-black text-gray-800 mb-4">🖼️ Product Images (Max 5)</h2>
+
+            {/* Tabs */}
+            <div className="flex gap-2 mb-4">
+              <button onClick={() => setImageTab('gallery')}
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all ${
+                  imageTab === 'gallery'
+                    ? 'bg-orange-500 text-white'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}>
+                <ImageIcon size={15} /> Gallery se Upload
+              </button>
+              <button onClick={() => setImageTab('url')}
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all ${
+                  imageTab === 'url'
+                    ? 'bg-orange-500 text-white'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}>
+                <Link size={15} /> URL se Add
+              </button>
             </div>
-            <p className="text-xs text-gray-400 mb-5">
-              Pehli image main photo hogi. Gallery se select karo ya drag & drop karo. Max 5MB per image.
-            </p>
 
-            {/* Image Grid */}
-            {form.images.length > 0 && (
-              <div className="grid grid-cols-3 gap-3 mb-4">
-                {form.images.map((url, idx) => (
-                  <div key={idx} className="relative group aspect-square rounded-2xl overflow-hidden border-2 border-gray-100 bg-gray-50">
-                    <img src={url} alt={`Product ${idx + 1}`}
-                      className="w-full h-full object-contain p-2"
-                      onError={e => { (e.target as any).src = 'https://placehold.co/150?text=Error' }} />
-
-                    {/* Overlay actions */}
-                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                      {idx > 0 && (
-                        <button onClick={() => moveImage(idx, idx - 1)}
-                          className="w-7 h-7 bg-white rounded-full flex items-center justify-center text-gray-700 hover:bg-orange-500 hover:text-white transition-colors text-xs font-black">
-                          ←
-                        </button>
-                      )}
-                      <button onClick={() => removeImage(idx)}
-                        className="w-7 h-7 bg-red-500 rounded-full flex items-center justify-center text-white hover:bg-red-600 transition-colors">
-                        <Trash2 size={12} />
-                      </button>
-                      {idx < form.images.length - 1 && (
-                        <button onClick={() => moveImage(idx, idx + 1)}
-                          className="w-7 h-7 bg-white rounded-full flex items-center justify-center text-gray-700 hover:bg-orange-500 hover:text-white transition-colors text-xs font-black">
-                          →
-                        </button>
-                      )}
+            {/* Gallery Upload */}
+            {imageTab === 'gallery' && (
+              <div>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  className="hidden"
+                  onChange={e => handleFileUpload(e.target.files)}
+                />
+                <div
+                  onClick={() => !uploading && fileInputRef.current?.click()}
+                  className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all ${
+                    uploading
+                      ? 'border-orange-300 bg-orange-50'
+                      : 'border-gray-200 hover:border-orange-400 hover:bg-orange-50/30'
+                  }`}>
+                  {uploading ? (
+                    <div className="flex flex-col items-center gap-2">
+                      <Loader2 size={28} className="animate-spin text-orange-500" />
+                      <p className="text-sm font-bold text-orange-600">Upload ho raha hai...</p>
                     </div>
+                  ) : (
+                    <div className="flex flex-col items-center gap-2">
+                      <Upload size={28} className="text-gray-300" />
+                      <p className="text-sm font-bold text-gray-600">Click karo ya photos drag karo</p>
+                      <p className="text-xs text-gray-400">JPG, PNG, WEBP · Max 5MB per image · Max 5 images</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
 
-                    {idx === 0 && (
-                      <span className="absolute bottom-1.5 left-1.5 text-[9px] bg-orange-500 text-white px-2 py-0.5 rounded-lg font-black">
-                        Main Photo
-                      </span>
+            {/* URL Input */}
+            {imageTab === 'url' && (
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={imageUrl}
+                  onChange={e => setImageUrl(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && addImageUrl()}
+                  placeholder="Image URL paste karo (https://...)"
+                  className="flex-1 border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100 transition-all"
+                />
+                <button onClick={addImageUrl}
+                  className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-3 rounded-xl font-bold text-sm flex items-center gap-2 transition-colors">
+                  <Plus size={16} /> Add
+                </button>
+              </div>
+            )}
+
+            {/* Preview */}
+            {form.images.length > 0 && (
+              <div className="grid grid-cols-5 gap-3 mt-4">
+                {form.images.map((img, i) => (
+                  <div key={i} className="relative group aspect-square">
+                    <img src={img} alt="" className="w-full h-full object-contain rounded-xl border border-gray-100 bg-gray-50 p-1" />
+                    <button onClick={() => removeImage(i)}
+                      className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-md">
+                      <X size={12} />
+                    </button>
+                    {i === 0 && (
+                      <span className="absolute bottom-1 left-1 bg-orange-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-md">MAIN</span>
                     )}
                   </div>
                 ))}
-
-                {/* Add more slot */}
-                {form.images.length < 6 && (
-                  <button onClick={() => fileRef.current?.click()}
-                    className="aspect-square rounded-2xl border-2 border-dashed border-gray-200 hover:border-orange-400 bg-gray-50 hover:bg-orange-50 flex flex-col items-center justify-center gap-2 transition-all group">
-                    <Plus size={20} className="text-gray-300 group-hover:text-orange-400 transition-colors" />
-                    <span className="text-[10px] font-bold text-gray-300 group-hover:text-orange-400 transition-colors">Add More</span>
-                  </button>
-                )}
               </div>
             )}
-
-            {/* Upload Drop Zone */}
-            {form.images.length === 0 && (
-              <div
-                onDragOver={e => { e.preventDefault(); setDragOver(true) }}
-                onDragLeave={() => setDragOver(false)}
-                onDrop={handleDrop}
-                onClick={() => fileRef.current?.click()}
-                className={`border-2 border-dashed rounded-2xl p-10 flex flex-col items-center justify-center gap-3 cursor-pointer transition-all ${
-                  dragOver
-                    ? 'border-orange-400 bg-orange-50'
-                    : 'border-gray-200 hover:border-orange-400 hover:bg-orange-50/50'
-                }`}
-              >
-                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-colors ${dragOver ? 'bg-orange-100' : 'bg-gray-100'}`}>
-                  <Upload size={24} className={dragOver ? 'text-orange-500' : 'text-gray-400'} />
-                </div>
-                <div className="text-center">
-                  <p className="font-black text-gray-700">Gallery se photos upload karo</p>
-                  <p className="text-xs text-gray-400 mt-1">Drag & drop ya click karke select karo</p>
-                  <p className="text-xs text-gray-300 mt-0.5">JPG, PNG, WebP · Max 5MB each</p>
-                </div>
-                <div className="flex items-center gap-2 px-5 py-2.5 bg-orange-500 text-white rounded-xl text-sm font-black hover:bg-orange-600 transition-colors">
-                  <ImageIcon size={15} /> Gallery Kholao
-                </div>
-              </div>
-            )}
-
-            {/* Upload Button when images exist */}
-            {form.images.length > 0 && form.images.length < 6 && (
-              <button
-                onClick={() => fileRef.current?.click()}
-                disabled={uploading}
-                className="w-full flex items-center justify-center gap-2 py-3 border-2 border-dashed border-gray-200 hover:border-orange-400 rounded-2xl text-sm font-bold text-gray-500 hover:text-orange-500 hover:bg-orange-50/50 transition-all disabled:opacity-60"
-              >
-                {uploading
-                  ? <><Loader2 size={15} className="animate-spin text-orange-500" /> Uploading...</>
-                  : <><Upload size={15} /> Aur photos add karo ({6 - form.images.length} remaining)</>}
-              </button>
-            )}
-
-            {/* Hidden file input */}
-            <input
-              ref={fileRef}
-              type="file"
-              accept="image/*"
-              multiple
-              className="hidden"
-              onChange={e => handleFileUpload(e.target.files)}
-            />
           </div>
 
-          {/* ── Specifications ── */}
-          <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6">
-            <div className="flex items-center gap-2 mb-2">
-              <div className="w-8 h-8 bg-cyan-50 rounded-xl flex items-center justify-center">
-                <Box size={16} className="text-cyan-600" />
-              </div>
-              <h2 className="font-black text-gray-900">Specifications</h2>
-              <span className="text-xs text-gray-400 font-medium">(optional)</span>
-            </div>
-            <p className="text-xs text-gray-400 mb-4">RAM, Storage, Color jaise details add karo</p>
-
-            {Object.entries(form.specifications).length > 0 && (
-              <div className="space-y-2 mb-4">
-                {Object.entries(form.specifications).map(([key, val]) => (
-                  <div key={key} className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl border border-gray-100">
-                    <span className="text-xs font-black text-gray-500 w-28 flex-shrink-0">{key}</span>
-                    <span className="text-sm font-medium text-gray-800 flex-1">{val}</span>
-                    <button onClick={() => removeSpec(key)} className="text-red-400 hover:text-red-600 transition-colors flex-shrink-0">
-                      <X size={14} />
-                    </button>
-                  </div>
-                ))}
-              </div>
+          {/* Submit */}
+          <button onClick={handleSubmit} disabled={loading || uploading}
+            className="w-full bg-orange-500 hover:bg-orange-600 disabled:opacity-60 text-white py-4 rounded-2xl font-black text-base flex items-center justify-center gap-3 transition-all shadow-lg shadow-orange-200">
+            {loading ? (
+              <><Loader2 size={20} className="animate-spin" /> Product add ho raha hai...</>
+            ) : (
+              '🚀 Product Publish Karo'
             )}
-
-            <div className="flex gap-2">
-              <input type="text" value={newSpecKey}
-                onChange={e => setNewSpecKey(e.target.value)}
-                placeholder="Key (e.g. RAM)"
-                className="w-32 px-3 py-2.5 border-2 border-gray-100 rounded-xl text-sm outline-none focus:border-orange-400 bg-gray-50 focus:bg-white transition-all font-medium" />
-              <input type="text" value={newSpecVal}
-                onChange={e => setNewSpecVal(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && addSpec()}
-                placeholder="Value (e.g. 8GB)"
-                className="flex-1 px-3 py-2.5 border-2 border-gray-100 rounded-xl text-sm outline-none focus:border-orange-400 bg-gray-50 focus:bg-white transition-all font-medium" />
-              <button onClick={addSpec}
-                className="px-4 py-2.5 bg-gray-900 text-white rounded-xl font-bold text-sm hover:bg-gray-800 transition-colors flex items-center gap-1.5">
-                <Plus size={14} /> Add
-              </button>
-            </div>
-          </div>
-
-          {/* ── Publish Button ── */}
-          <button onClick={handleSave} disabled={saving || uploading}
-            className="w-full py-4 bg-orange-500 hover:bg-orange-600 text-white font-black rounded-2xl transition-all disabled:opacity-60 flex items-center justify-center gap-2 shadow-lg shadow-orange-200 text-base">
-            {saving
-              ? <><Loader2 size={18} className="animate-spin" /> Publishing...</>
-              : <><Sparkles size={18} /> Publish Product</>}
           </button>
+
         </div>
       </div>
     </div>

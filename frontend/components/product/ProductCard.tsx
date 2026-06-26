@@ -1,6 +1,7 @@
 'use client'
-import { memo, useState } from 'react'
+import { memo, useState, useCallback } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { Heart, ShoppingCart, Star } from 'lucide-react'
 import { useCartStore, useWishlistStore } from '@/lib/store'
 import toast from 'react-hot-toast'
@@ -20,178 +21,153 @@ interface Product {
 }
 
 const ProductCard = memo(function ProductCard({ product }: { product: Product }) {
-  const [imgErr,    setImgErr]    = useState(false)
-  const [cartAnim,  setCartAnim]  = useState(false)
-  const [wishAnim,  setWishAnim]  = useState(false)
   const [imgLoaded, setImgLoaded] = useState(false)
+  const [isWishlisted, setIsWishlisted] = useState(false)
+  const [cartAnimating, setCartAnimating] = useState(false)
+  const [wishAnimating, setWishAnimating] = useState(false)
 
-  const addToCart   = useCartStore(s => s.addItem)
+  const addToCart = useCartStore((s) => s.addItem)
+  const { items: wishlistItems, addItem: addToWishlist, removeItem: removeFromWishlist } = useWishlistStore()
 
-  // ✅ FIX: get items array, check manually — don't call function inside selector
-  const wishItems   = useWishlistStore(s => s.items)
-  const addWishlist = useWishlistStore(s => s.addItem)
-  const removeWish  = useWishlistStore(s => s.removeItem)
+  const isInWishlist = wishlistItems.some((item: any) => 
+    item?.productId === product.id || item?.id === product.id
+  )
 
-  // Check wishlist from the items array directly
-  const isWishlisted = Array.isArray(wishItems)
-    ? wishItems.some((item: any) =>
-        typeof item === 'string' ? item === product.id : item?.productId === product.id || item?.id === product.id
-      )
-    : false
+  const discount = product.discount ?? (product.mrp && product.mrp > product.price
+    ? Math.round(((product.mrp - product.price) / product.mrp) * 100)
+    : 0)
 
-  const discount = product.discount ??
-    (product.mrp && product.mrp > product.price
-      ? Math.round((1 - product.price / product.mrp) * 100)
-      : 0)
+  const inStock = (product.stock ?? 1) > 0
 
-  const inStock  = (product.stock ?? 1) > 0
-  const imgSrc   = (!imgErr && product.images?.[0]) || 'https://placehold.co/280x280/f0f2f5/adb5bd?text=No+Image'
+  // Reliable image source with fallback
+  const imageSrc = product.images?.[0] 
+    ? product.images[0] 
+    : 'https://placehold.co/400x400/f0f2f5/9ca3af?text=No+Image'
 
-  const handleCart = (e: React.MouseEvent) => {
+  const handleWishlist = useCallback((e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    if (!inStock) return
-    addToCart({
-      productId: product.id,
-      title:     product.title,
-      price:     product.price,
-      mrp:       product.mrp ?? product.price,
-      image:     product.images?.[0] ?? '',
-      quantity:  1,
-    })
-    setCartAnim(true)
-    setTimeout(() => setCartAnim(false), 1000)
-    toast.success('Added to cart!', { duration: 1500, icon: '🛒' })
-  }
 
-  const handleWish = (e: React.MouseEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-    if (isWishlisted) {
-      removeWish(product.id)
+    setWishAnimating(true)
+
+    if (isInWishlist) {
+      removeFromWishlist(product.id)
       toast('Removed from wishlist', { icon: '💔', duration: 1200 })
     } else {
-      addWishlist(product.id)
+      addToWishlist(product.id)
       toast.success('Added to wishlist!', { icon: '❤️', duration: 1200 })
     }
-    setWishAnim(true)
-    setTimeout(() => setWishAnim(false), 400)
-  }
+
+    setTimeout(() => setWishAnimating(false), 400)
+  }, [isInWishlist, product.id, addToWishlist, removeFromWishlist])
+
+  const handleAddToCart = useCallback((e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+
+    if (!inStock) return
+
+    addToCart({
+      productId: product.id,
+      title: product.title,
+      price: product.price,
+      mrp: product.mrp ?? product.price,
+      image: product.images?.[0] ?? '',
+      quantity: 1,
+    })
+
+    setCartAnimating(true)
+    setTimeout(() => setCartAnimating(false), 800)
+    toast.success('Added to cart!', { duration: 1500, icon: '🛒' })
+  }, [product, addToCart, inStock])
 
   return (
     <Link
       href={`/products/${product.slug}`}
-      className="group relative flex flex-col bg-white hover:shadow-md transition-all duration-200 h-full"
-      style={{ textDecoration: 'none' }}
+      className="group relative flex flex-col bg-white rounded-3xl overflow-hidden border border-gray-100 hover:border-orange-200 hover:shadow-2xl transition-all duration-300 h-full"
     >
       {/* Image */}
-      <div className="relative aspect-square overflow-hidden bg-gray-50">
-
-        {!imgLoaded && (
-          <div className="absolute inset-0 bg-gray-100 animate-pulse" />
-        )}
-
-        <img
-          src={imgSrc}
+      <div className="relative aspect-square bg-gray-50 overflow-hidden">
+        <Image
+          src={imageSrc}
           alt={product.title}
-          onError={() => setImgErr(true)}
+          fill
+          sizes="(max-width: 768px) 50vw, 25vw"
+          className={`object-contain p-4 transition-all duration-500 group-hover:scale-105 ${imgLoaded ? 'opacity-100' : 'opacity-0'}`}
           onLoad={() => setImgLoaded(true)}
-          className={`w-full h-full object-contain p-3 group-hover:scale-105 transition-transform duration-300 ${
-            imgLoaded ? 'opacity-100' : 'opacity-0'
-          }`}
+          onError={() => setImgLoaded(true)}
+          priority={false}
         />
 
         {discount > 0 && (
-          <span className="absolute top-2 left-2 bg-red-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-md leading-none">
+          <div className="absolute top-3 left-3 bg-red-500 text-white text-[10px] font-black px-2.5 py-1 rounded-2xl shadow-md">
             -{discount}%
-          </span>
-        )}
-
-        {product.isAssured && (
-          <span className="absolute bottom-2 left-2 bg-[#F97316]/90 text-white text-[8px] font-black px-1.5 py-0.5 rounded-md leading-none">
-            ✓ ASSURED
-          </span>
-        )}
-
-        {!inStock && (
-          <div className="absolute inset-0 bg-white/70 flex items-center justify-center">
-            <span className="text-[10px] font-black text-gray-500 bg-white px-2 py-1 rounded-lg border border-gray-200">
-              Out of Stock
-            </span>
           </div>
         )}
 
-        {/* Wishlist btn */}
+        {product.isAssured && (
+          <div className="absolute bottom-3 left-3 bg-[#F97316] text-white text-[9px] font-black px-2.5 py-0.5 rounded-xl">
+            ✓ ASSURED
+          </div>
+        )}
+
+        {!inStock && (
+          <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+            <span className="bg-white text-red-600 text-xs font-black px-4 py-2 rounded-2xl">Out of Stock</span>
+          </div>
+        )}
+
+        {/* Wishlist Button */}
         <button
-          onClick={handleWish}
-          className={`absolute top-2 right-2 w-7 h-7 rounded-full bg-white shadow-md flex items-center justify-center transition-all duration-200 border border-gray-100 opacity-0 group-hover:opacity-100 ${
-            wishAnim ? 'scale-125' : 'hover:scale-110'
-          }`}
-          aria-label={isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
+          onClick={handleWishlist}
+          className={`absolute top-3 right-3 w-9 h-9 bg-white shadow-lg rounded-2xl flex items-center justify-center border border-gray-100 transition-all duration-200 hover:scale-110 ${wishAnimating ? 'scale-125' : ''}`}
         >
-          <Heart
-            size={13}
-            className={isWishlisted ? 'text-red-500 fill-red-500' : 'text-gray-400'}
-          />
+          <Heart size={18} className={isInWishlist ? 'text-red-500 fill-red-500' : 'text-gray-400'} />
         </button>
 
-        {/* Cart btn */}
+        {/* Add to Cart */}
         {inStock && (
           <button
-            onClick={handleCart}
-            className={`absolute bottom-0 left-0 right-0 flex items-center justify-center gap-1.5 py-2 text-[11px] font-black text-white translate-y-full group-hover:translate-y-0 transition-transform duration-200 ${
-              cartAnim ? 'bg-green-500' : 'bg-[#F97316] hover:bg-[#EA580C]'
-            }`}
-            aria-label="Add to cart"
+            onClick={handleAddToCart}
+            className={`absolute bottom-0 left-0 right-0 h-12 flex items-center justify-center gap-2 text-sm font-black text-white transition-all duration-300 ${cartAnimating ? 'bg-green-500' : 'bg-[#F97316] hover:bg-orange-600'}`}
           >
-            <ShoppingCart size={11} />
-            {cartAnim ? 'Added! ✓' : 'Add to Cart'}
+            <ShoppingCart size={16} />
+            {cartAnimating ? 'Added ✓' : 'Add to Cart'}
           </button>
         )}
       </div>
 
       {/* Info */}
-      <div className="flex flex-col flex-1 px-2.5 py-2.5">
-
-        <p className="text-[11.5px] font-semibold text-gray-800 leading-snug line-clamp-2 mb-1.5 flex-1 group-hover:text-[#F97316] transition-colors">
+      <div className="flex-1 p-4 flex flex-col">
+        <h3 className="font-semibold text-gray-900 line-clamp-2 text-sm leading-tight group-hover:text-[#F97316] transition-colors flex-1">
           {product.title}
-        </p>
+        </h3>
 
-        {(product.avgRating ?? 0) > 0 && (
-          <div className="flex items-center gap-1 mb-1.5">
-            <span className="flex items-center gap-0.5 bg-green-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded">
-              <Star size={7} className="fill-white" />
-              {product.avgRating?.toFixed(1)}
-            </span>
-            {(product.totalReviews ?? 0) > 0 && (
-              <span className="text-[9px] text-gray-400">
-                ({product.totalReviews?.toLocaleString('en-IN')})
-              </span>
+        {product.avgRating && product.avgRating > 0 && (
+          <div className="flex items-center gap-1 mt-2">
+            <div className="flex items-center bg-green-600 text-white text-[10px] font-black px-1.5 py-px rounded">
+              <Star size={10} className="fill-white" />
+              {product.avgRating.toFixed(1)}
+            </div>
+            {product.totalReviews && (
+              <span className="text-xs text-gray-400">({product.totalReviews})</span>
             )}
           </div>
         )}
 
-        <div className="flex items-baseline gap-1.5 flex-wrap">
-          <span className="text-sm font-black text-gray-900">
+        <div className="mt-auto pt-3 flex items-baseline gap-2">
+          <span className="text-lg font-black text-gray-900">
             ₹{product.price.toLocaleString('en-IN')}
           </span>
           {product.mrp && product.mrp > product.price && (
-            <span className="text-[10px] text-gray-400 line-through">
+            <span className="text-sm text-gray-400 line-through">
               ₹{product.mrp.toLocaleString('en-IN')}
             </span>
           )}
           {discount > 0 && (
-            <span className="text-[10px] text-green-600 font-bold">
-              {discount}% off
-            </span>
+            <span className="text-xs font-bold text-green-600">({discount}% off)</span>
           )}
         </div>
-
-        {inStock && (product.stock ?? 99) <= 5 && (
-          <p className="text-[9px] text-orange-500 font-bold mt-1">
-            Only {product.stock} left!
-          </p>
-        )}
       </div>
     </Link>
   )
