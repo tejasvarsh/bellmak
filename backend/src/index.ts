@@ -22,7 +22,7 @@ import sellerRoutes from './routes/seller.routes'
 import adminRoutes from './routes/admin.routes'
 import uploadRoutes from './routes/upload.routes'
 import miscRoutes from './routes/misc.routes'
-import liveRoutes from './routes/live.routes'
+//import liveRoutes from './routes/live.routes'
 
 import { errorHandler } from './middleware/errorHandler'
 
@@ -152,7 +152,7 @@ app.use('/api/wishlist', wishlistRoutes)
 app.use('/api/addresses', addressRoutes)
 app.use('/api/seller', sellerRoutes)
 app.use('/api/admin', adminRoutes)
-app.use('/api/live', liveRoutes)
+//app.use('/api/live', liveRoutes)
 app.use('/api/upload', uploadRoutes)
 app.use('/api', miscRoutes)
 
