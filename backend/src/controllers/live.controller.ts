@@ -1,4 +1,4 @@
-import { Response, NextFunction } from 'express'
+import { Request, Response, NextFunction } from 'express'
 import { RtcTokenBuilder, RtcRole } from 'agora-access-token'
 import { prisma } from '../config/database'
 import { AuthRequest } from '../middleware/auth'
