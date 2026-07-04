@@ -15,7 +15,7 @@ export default function MobileBottomNav() {
 
   const items = [
     { label: 'Home',     icon: Home,         href: '/' },
-    { label: 'Category', icon: Grid3x3,      href: '/categories' },
+    { label: 'Category', icon: Grid3x3,      href: '/category' },
     { label: 'Orders',   icon: Package,      href: isLoggedIn ? '/account/orders' : '/login' },
     { label: 'Wishlist', icon: Heart,        href: '/account/wishlist' },
     { label: 'Cart',     icon: ShoppingCart, href: '/cart', badge: mounted ? totalItems : 0 },
