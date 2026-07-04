@@ -4,6 +4,7 @@
   "description": "BELLMAK E-Commerce Backend API",
   "main": "dist/index.js",
   "scripts": {
+    "postinstall": "npx prisma generate",
     "dev": "nodemon --exec ts-node src/index.ts",
     "build": "npx prisma generate && npx esbuild src/index.ts --bundle --platform=node --outfile=dist/index.js --external:@prisma/client --external:prisma",
     "start": "node dist/index.js",
