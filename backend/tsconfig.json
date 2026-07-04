@@ -14,8 +14,7 @@
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
     "types": ["node"],
-    "noEmitOnError": false,
-    "transpileOnly": true
+    "noEmitOnError": false
   },
   "ts-node": {
     "transpileOnly": true,

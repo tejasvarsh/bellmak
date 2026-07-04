@@ -7,7 +7,7 @@ import {
   Package, LogOut, Settings, ChevronRight,
   Zap, Home, Smartphone, Shirt, Tv, Dumbbell,
   BookOpen, Baby, ShoppingBag, Plug, Sparkles,
-  Radio, Shield, Store, Wallet, HelpCircle,
+  Shield, Store, Wallet, HelpCircle,
   Phone, FileText, Lock, Tag
 } from 'lucide-react'
 import { useCartStore, useAuthStore } from '@/lib/store'
@@ -87,7 +87,6 @@ export default function Navbar() {
     return () => window.removeEventListener('scroll', onScroll)
   }, [])
 
-  // Close dropdowns on outside click
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (catRef.current  && !catRef.current.contains(e.target as Node))  setCatOpen(false)
@@ -97,7 +96,6 @@ export default function Navbar() {
     return () => document.removeEventListener('mousedown', handler)
   }, [])
 
-  // Close mobile on route change
   useEffect(() => { setMobileOpen(false) }, [router])
 
   const handleSearch = useCallback((e: React.FormEvent) => {
@@ -126,32 +124,27 @@ export default function Navbar() {
 
   return (
     <>
-      {/* ═══════════════════════════════════════════════════
-          DESKTOP + TABLET NAVBAR
-      ═══════════════════════════════════════════════════ */}
       <header className={`sticky top-0 z-50 transition-all duration-300 ${
         scrolled
           ? 'bg-white/95 backdrop-blur-md shadow-[0_2px_20px_rgba(0,0,0,0.08)]'
           : 'bg-white shadow-sm'
       }`}>
 
-        {/* Top accent line */}
         <div className="h-[3px] bg-gradient-to-r from-[#F97316] via-orange-400 to-amber-400" />
 
-        {/* ── Main Bar ── */}
         <div className="max-w-[1440px] mx-auto px-4 lg:px-6 h-[58px] flex items-center gap-4">
 
-          {/* Logo */}
+          {/* Logo — always visible, mobile + desktop */}
           <Link href="/" className="flex items-center gap-2.5 flex-shrink-0 group">
             <div className="relative w-9 h-9 bg-gradient-to-br from-[#F97316] to-orange-600 rounded-2xl flex items-center justify-center shadow-md shadow-orange-200 group-hover:scale-105 group-hover:rotate-3 transition-all duration-200">
               <span className="text-lg leading-none">🛒</span>
               <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-400 rounded-full border-2 border-white" />
             </div>
-            <div className="hidden sm:block">
-              <p className="font-black text-[19px] leading-none text-gray-900 tracking-tight">
+            <div>
+              <p className="font-black text-[17px] sm:text-[19px] leading-none text-gray-900 tracking-tight">
                 BELL<span className="text-[#F97316]">MAK</span>
               </p>
-              <p className="text-[8.5px] text-gray-400 leading-none mt-0.5 font-bold tracking-[0.15em] uppercase">
+              <p className="hidden sm:block text-[8.5px] text-gray-400 leading-none mt-0.5 font-bold tracking-[0.15em] uppercase">
                 India Ka Apna Bazaar
               </p>
             </div>
@@ -240,7 +233,6 @@ export default function Navbar() {
               </button>
             </div>
 
-            {/* Search Suggestions */}
             {showSuggestions && (
               <div className="absolute top-full left-0 right-0 bg-white shadow-2xl rounded-2xl mt-1.5 z-50 border border-gray-100 overflow-hidden">
                 <div className="px-4 py-2 border-b border-gray-50 bg-gray-50/80">
@@ -265,39 +257,14 @@ export default function Navbar() {
           {/* ── Right Action Icons ── */}
           <div className="flex items-center gap-1 ml-auto md:ml-0">
 
-            {/* LIVE Button */}
-            {mounted && (
-              isSeller ? (
-                <Link href="/live/seller"
-                  className="hidden md:flex items-center gap-2 h-9 px-3.5 bg-gradient-to-r from-red-500 to-rose-500 hover:from-red-600 hover:to-rose-600 text-white rounded-2xl transition-all active:scale-95 shadow-sm shadow-red-200">
-                  <span className="relative flex h-2 w-2">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75" />
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-white" />
-                  </span>
-                  <span className="text-xs font-black">LIVE</span>
-                </Link>
-              ) : (
-                <Link href="/live"
-                  className="hidden md:flex items-center gap-2 h-9 px-3.5 border-2 border-red-400 hover:bg-red-50 text-red-500 rounded-2xl transition-all active:scale-95">
-                  <span className="relative flex h-2 w-2">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75" />
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500" />
-                  </span>
-                  <span className="text-xs font-black">LIVE</span>
-                </Link>
-              )
-            )}
-
-            {/* Wishlist */}
-            <NavIcon href="/account/wishlist" icon={Heart} />
-
-            {/* My Orders — only when logged in */}
-            {mounted && isLoggedIn && (
-              <NavIcon href="/account/orders" icon={Package} label="Orders" />
-            )}
-
-            {/* Cart */}
-            <NavIcon href="/cart" icon={ShoppingCart} badge={mounted ? totalItems : 0} label="Cart" />
+            {/* Wishlist, Orders, Cart — desktop only (mobile uses bottom nav) */}
+            <div className="hidden md:flex items-center gap-1">
+              <NavIcon href="/account/wishlist" icon={Heart} />
+              {mounted && isLoggedIn && (
+                <NavIcon href="/account/orders" icon={Package} label="Orders" />
+              )}
+              <NavIcon href="/cart" icon={ShoppingCart} badge={mounted ? totalItems : 0} label="Cart" />
+            </div>
 
             {/* User Account */}
             <div className="relative" ref={userRef}>
@@ -335,10 +302,8 @@ export default function Navbar() {
                 )}
               </button>
 
-              {/* User Dropdown */}
               {mounted && isLoggedIn && userOpen && (
                 <div className="absolute right-0 top-full mt-2 bg-white shadow-2xl rounded-3xl w-64 z-50 border border-gray-100 overflow-hidden">
-                  {/* User Header */}
                   <div className="p-4 bg-gradient-to-br from-orange-500 to-amber-500">
                     <div className="flex items-center gap-3">
                       <div className="w-11 h-11 bg-white/20 rounded-2xl flex items-center justify-center text-white font-black text-lg">
@@ -361,7 +326,6 @@ export default function Navbar() {
                     </div>
                   </div>
 
-                  {/* Menu Items */}
                   <div className="p-2">
                     {[
                       { icon: User,    label: 'My Account',  href: '/account',          color: 'text-gray-600' },
@@ -389,14 +353,6 @@ export default function Navbar() {
                             <Store size={13} className="text-blue-500" />
                           </div>
                           <span className="font-medium">Seller Dashboard</span>
-                        </Link>
-                        <Link href="/live/seller" onClick={() => setUserOpen(false)}
-                          className="flex items-center gap-3 px-3 py-2.5 text-sm text-red-500 hover:bg-red-50 rounded-xl transition-colors group">
-                          <div className="w-7 h-7 bg-red-50 group-hover:bg-red-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                            <Radio size={13} className="text-red-500" />
-                          </div>
-                          <span className="font-medium">Go Live</span>
-                          <span className="ml-auto w-2 h-2 bg-red-500 rounded-full animate-pulse" />
                         </Link>
                       </>
                     )}
@@ -498,7 +454,6 @@ export default function Navbar() {
           />
           <div className="fixed top-0 left-0 bottom-0 w-[300px] bg-white z-50 flex flex-col shadow-2xl overflow-hidden">
 
-            {/* Drawer Header */}
             <div className="bg-gradient-to-br from-[#1a1a2e] to-[#0f3460] px-5 py-5 flex-shrink-0">
               <div className="flex items-center justify-between mb-4">
                 <span className="text-white font-black text-xl">
@@ -530,10 +485,8 @@ export default function Navbar() {
               )}
             </div>
 
-            {/* Scrollable Content */}
             <div className="flex-1 overflow-y-auto">
 
-              {/* Quick Actions */}
               <div className="p-4 border-b border-gray-100">
                 <div className="grid grid-cols-3 gap-2">
                   {[
@@ -552,26 +505,6 @@ export default function Navbar() {
                 </div>
               </div>
 
-              {/* Live CTA */}
-              <div className="px-4 py-3 border-b border-gray-100">
-                {isSeller ? (
-                  <Link href="/live/seller" onClick={() => setMobileOpen(false)}
-                    className="flex items-center gap-3 px-4 py-3 bg-gradient-to-r from-red-500 to-rose-500 text-white rounded-2xl font-bold text-sm shadow-sm shadow-red-200">
-                    <span className="w-2.5 h-2.5 bg-white rounded-full animate-ping flex-shrink-0" />
-                    Go Live Now
-                    <ChevronRight size={16} className="ml-auto" />
-                  </Link>
-                ) : (
-                  <Link href="/live" onClick={() => setMobileOpen(false)}
-                    className="flex items-center gap-3 px-4 py-3 border-2 border-red-400 text-red-500 rounded-2xl font-bold text-sm hover:bg-red-50 transition-colors">
-                    <span className="w-2.5 h-2.5 bg-red-500 rounded-full animate-ping flex-shrink-0" />
-                    Watch Live
-                    <ChevronRight size={16} className="ml-auto" />
-                  </Link>
-                )}
-              </div>
-
-              {/* Categories */}
               <div className="px-4 py-3 border-b border-gray-100">
                 <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">Categories</p>
                 <div className="grid grid-cols-4 gap-2">
@@ -585,7 +518,6 @@ export default function Navbar() {
                 </div>
               </div>
 
-              {/* Links */}
               <div className="px-4 py-3 border-b border-gray-100">
                 <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Quick Links</p>
                 {[
@@ -606,7 +538,6 @@ export default function Navbar() {
                 ))}
               </div>
 
-              {/* Seller/Admin */}
               {isSeller && (
                 <div className="px-4 py-3 border-b border-gray-100">
                   <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Seller Tools</p>
@@ -633,7 +564,6 @@ export default function Navbar() {
               )}
             </div>
 
-            {/* Logout */}
             {mounted && isLoggedIn && (
               <div className="px-4 py-4 border-t border-gray-100 flex-shrink-0">
                 <button

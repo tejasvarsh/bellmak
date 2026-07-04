@@ -1,17 +1,15 @@
 'use client'
 import { useEffect, useState, useRef, memo, useCallback } from 'react'
 import Link from 'next/link'
-import HeroCarousel from '@/components/home/HeroCarousel'
 import api from '@/lib/api'
 import ProductCard from '@/components/product/ProductCard'
 import {
-  ArrowRight, ArrowUpRight, Zap, Star, Shield, Truck,
-  RefreshCw, Award, ChevronLeft, ChevronRight, Play,
-  TrendingUp, Crown, Radio, Flame, Clock, Sparkles, Percent
+  ArrowRight, ArrowUpRight, Star, Shield, Truck,
+  RefreshCw, Award, ChevronLeft, ChevronRight,
+  TrendingUp, Crown, Sparkles, Percent
 } from 'lucide-react'
 
 const CATEGORIES = [
-  { name:'For You',     slug:'featured',     emoji:'✨', color:'from-orange-400 to-amber-400'   },
   { name:'Mobiles',     slug:'mobiles',      emoji:'📱', color:'from-blue-400 to-blue-600'      },
   { name:'Fashion',     slug:'fashion',      emoji:'👗', color:'from-pink-400 to-rose-500'      },
   { name:'Electronics', slug:'electronics',  emoji:'💻', color:'from-purple-400 to-violet-600'  },
@@ -49,29 +47,22 @@ const Ticker = memo(() => (
 ))
 Ticker.displayName = 'Ticker'
 
-const Countdown = memo(() => {
-  const [t, setT] = useState({ h: 5, m: 59, s: 47 })
-  useEffect(() => {
-    const id = setInterval(() => setT(p => {
-      let { h, m, s } = p
-      if (--s < 0) { s = 59; if (--m < 0) { m = 59; h = Math.max(0, h - 1) } }
-      return { h, m, s }
-    }), 1000)
-    return () => clearInterval(id)
-  }, [])
-  const pad = (n: number) => String(n).padStart(2, '0')
-  return (
-    <div className="flex items-center gap-0.5">
-      {[pad(t.h), pad(t.m), pad(t.s)].map((v, i) => (
-        <span key={i} className="flex items-center gap-0.5">
-          <span className="bg-white/20 text-white font-black text-xs px-1.5 py-0.5 rounded min-w-[24px] text-center tabular-nums">{v}</span>
-          {i < 2 && <span className="text-white/60 font-black text-xs">:</span>}
-        </span>
-      ))}
-    </div>
-  )
-})
-Countdown.displayName = 'Countdown'
+const BellmakHeroBanner = memo(() => (
+  <div className="relative overflow-hidden bg-[#1a1a2e]" style={{ aspectRatio: '16/7' }}>
+    <video
+      className="absolute inset-0 w-full h-full object-cover"
+      src="/bellmak-ad.mp4"
+      poster="/bellmak-poster.jpg"
+      autoPlay
+      muted
+      loop
+      playsInline
+      preload="auto"
+    />
+    <div className="absolute inset-0 bg-black/25" />
+  </div>
+))
+BellmakHeroBanner.displayName = 'BellmakHeroBanner'
 
 const ProductShelf = memo(({ products, loading, count = 8 }: {
   products: any[]; loading: boolean; count?: number
@@ -82,13 +73,13 @@ const ProductShelf = memo(({ products, loading, count = 8 }: {
   return (
     <div className="relative group/shelf">
       <button onClick={() => scroll('l')}
-        className="absolute left-2 top-1/2 -translate-y-1/2 z-10 w-9 h-9 bg-white shadow-xl rounded-full flex items-center justify-center border border-gray-100 opacity-0 group-hover/shelf:opacity-100 hover:scale-110 hover:border-[#F97316] transition-all duration-200">
+        className="hidden md:flex absolute left-2 top-1/2 -translate-y-1/2 z-10 w-9 h-9 bg-white shadow-xl rounded-full items-center justify-center border border-gray-100 opacity-0 group-hover/shelf:opacity-100 hover:scale-110 hover:border-[#F97316] transition-all duration-200">
         <ChevronLeft size={15} className="text-gray-700" />
       </button>
       <div ref={ref} className="flex overflow-x-auto scrollbar-hide">
         {loading
           ? [...Array(count)].map((_, i) => (
-            <div key={i} className="flex-shrink-0 w-[170px] border-r border-gray-100 last:border-0 animate-pulse">
+            <div key={i} className="flex-shrink-0 w-[145px] md:w-[170px] border-r border-gray-100 last:border-0 animate-pulse">
               <div className="aspect-square bg-gradient-to-br from-gray-100 to-gray-50" />
               <div className="p-3 space-y-2">
                 <div className="h-2.5 bg-gray-100 rounded-full w-4/5" />
@@ -104,7 +95,7 @@ const ProductShelf = memo(({ products, loading, count = 8 }: {
             </div>
           )
           : products.slice(0, count).map(p => (
-            <div key={p.id} className="flex-shrink-0 w-[170px] border-r border-gray-100 last:border-0 hover:bg-orange-50/30 transition-colors">
+            <div key={p.id} className="flex-shrink-0 w-[145px] md:w-[170px] border-r border-gray-100 last:border-0 hover:bg-orange-50/30 transition-colors">
               <ProductCard product={p} />
             </div>
           ))
@@ -120,7 +111,7 @@ const ProductShelf = memo(({ products, loading, count = 8 }: {
         )}
       </div>
       <button onClick={() => scroll('r')}
-        className="absolute right-2 top-1/2 -translate-y-1/2 z-10 w-9 h-9 bg-white shadow-xl rounded-full flex items-center justify-center border border-gray-100 opacity-0 group-hover/shelf:opacity-100 hover:scale-110 hover:border-[#F97316] transition-all duration-200">
+        className="hidden md:flex absolute right-2 top-1/2 -translate-y-1/2 z-10 w-9 h-9 bg-white shadow-xl rounded-full items-center justify-center border border-gray-100 opacity-0 group-hover/shelf:opacity-100 hover:scale-110 hover:border-[#F97316] transition-all duration-200">
         <ChevronRight size={15} className="text-gray-700" />
       </button>
     </div>
@@ -128,76 +119,42 @@ const ProductShelf = memo(({ products, loading, count = 8 }: {
 })
 ProductShelf.displayName = 'ProductShelf'
 
-const SectionHeader = memo(({ icon, label, title, href, badge, timer }: {
+const SectionHeader = memo(({ icon, label, title, href, badge }: {
   icon: React.ReactNode; label: string; title: string
-  href: string; badge?: string; timer?: boolean
+  href: string; badge?: string
 }) => (
-  <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-    <div className="flex items-center gap-3">
-      <div className="w-9 h-9 bg-gradient-to-br from-[#F97316] to-orange-600 rounded-2xl flex items-center justify-center shadow-md shadow-orange-200">
+  <div className="flex items-center justify-between px-4 md:px-5 py-3.5 md:py-4 border-b border-gray-100">
+    <div className="flex items-center gap-2.5 md:gap-3">
+      <div className="w-8 h-8 md:w-9 md:h-9 bg-gradient-to-br from-[#F97316] to-orange-600 rounded-2xl flex items-center justify-center shadow-md shadow-orange-200 flex-shrink-0">
         {icon}
       </div>
       <div>
-        <p className="text-[9px] font-black text-gray-400 uppercase tracking-[0.18em] leading-none">{label}</p>
+        <p className="text-[8.5px] md:text-[9px] font-black text-gray-400 uppercase tracking-[0.18em] leading-none">{label}</p>
         <div className="flex items-center gap-2 mt-0.5">
-          <h2 className="font-black text-gray-900 text-base leading-none">{title}</h2>
+          <h2 className="font-black text-gray-900 text-sm md:text-base leading-none">{title}</h2>
           {badge && <span className="text-[9px] font-black bg-gradient-to-r from-red-500 to-rose-500 text-white px-2 py-0.5 rounded-full">{badge}</span>}
         </div>
       </div>
     </div>
-    <div className="flex items-center gap-3">
-      {timer && (
-        <div className="flex items-center gap-2 bg-red-500 px-3 py-1.5 rounded-xl">
-          <Clock size={10} className="text-white" />
-          <Countdown />
-        </div>
-      )}
-      <Link href={href}
-        className="flex items-center gap-1.5 text-xs font-black text-[#F97316] bg-orange-50 hover:bg-orange-100 px-4 py-2 rounded-xl transition-all border border-orange-100">
-        See All <ArrowUpRight size={12} />
-      </Link>
-    </div>
+    <Link href={href}
+      className="flex items-center gap-1 md:gap-1.5 text-[11px] md:text-xs font-black text-[#F97316] bg-orange-50 hover:bg-orange-100 px-2.5 md:px-4 py-1.5 md:py-2 rounded-xl transition-all border border-orange-100 flex-shrink-0">
+      See All <ArrowUpRight size={12} />
+    </Link>
   </div>
 ))
 SectionHeader.displayName = 'SectionHeader'
 
-const DealBox = memo(({ title, sub, href, color, emoji }: {
-  title: string; sub: string; href: string; color: string; emoji: string
-}) => (
-  <Link href={href}
-    className="bg-white overflow-hidden hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 group flex flex-col border-r border-b border-gray-100 last:border-r-0">
-    <div className={`${color} px-4 pt-4 pb-3`}>
-      <div className="flex items-start justify-between">
-        <div>
-          <p className="font-black text-gray-900 text-sm leading-tight">{title}</p>
-          <p className="text-xs text-gray-500 mt-0.5 font-medium">{sub}</p>
-        </div>
-        <span className="text-3xl group-hover:scale-125 transition-transform duration-300">{emoji}</span>
-      </div>
-    </div>
-    <div className="flex-1 flex items-center justify-center py-8">
-      <span className="text-6xl group-hover:scale-110 transition-transform duration-300">{emoji}</span>
-    </div>
-    <div className="px-4 py-2.5 flex items-center justify-between bg-gray-50/80 border-t border-gray-100">
-      <span className="text-xs font-black text-[#F97316]">Shop Now</span>
-      <ArrowRight size={13} className="text-[#F97316] group-hover:translate-x-1.5 transition-transform" />
-    </div>
-  </Link>
-))
-DealBox.displayName = 'DealBox'
-
 const CategoryStrip = memo(() => (
   <div className="bg-white border-b border-gray-100 shadow-sm">
     <div className="max-w-[1440px] mx-auto px-3">
-      <div className="flex items-start overflow-x-auto scrollbar-hide py-4 gap-2">
+      <div className="flex items-start overflow-x-auto scrollbar-hide py-3 md:py-4 gap-2">
         {CATEGORIES.map(cat => (
-          <Link key={cat.slug}
-            href={cat.slug === 'featured' ? '/products' : `/category/${cat.slug}`}
-            className="flex flex-col items-center gap-2 px-3 py-1 flex-shrink-0 group">
-            <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${cat.color} flex items-center justify-center text-2xl shadow-md group-hover:scale-110 group-hover:shadow-lg transition-all duration-200`}>
+          <Link key={cat.slug} href={`/category/${cat.slug}`}
+            className="flex flex-col items-center gap-1.5 md:gap-2 px-2.5 md:px-3 py-1 flex-shrink-0 group">
+            <div className={`w-12 h-12 md:w-14 md:h-14 rounded-2xl bg-gradient-to-br ${cat.color} flex items-center justify-center text-xl md:text-2xl shadow-md group-hover:scale-110 group-hover:shadow-lg transition-all duration-200`}>
               {cat.emoji}
             </div>
-            <span className="text-[10px] font-bold whitespace-nowrap text-gray-600 group-hover:text-[#F97316] transition-colors">
+            <span className="text-[9px] md:text-[10px] font-bold whitespace-nowrap text-gray-600 group-hover:text-[#F97316] transition-colors">
               {cat.name}
             </span>
           </Link>
@@ -209,20 +166,17 @@ const CategoryStrip = memo(() => (
 CategoryStrip.displayName = 'CategoryStrip'
 
 export default function HomePage() {
-  const [featured,    setFeatured]    = useState<any[]>([])
   const [trending,    setTrending]    = useState<any[]>([])
   const [newArrivals, setNewArrivals] = useState<any[]>([])
   const [loading,     setLoading]     = useState(true)
 
   useEffect(() => {
     Promise.all([
-      api.get('/products/featured').catch(() => null),
       api.get('/products/trending').catch(() => null),
       api.get('/products', { params: { sort: 'createdAt', limit: 12 } }).catch(() => null),
-    ]).then(([f, t, n]) => {
-      if (f?.data?.data?.length)  setFeatured(f.data.data)
-      if (t?.data?.data?.length)  setTrending(t.data.data)
-      if (n?.data?.data?.length)  setNewArrivals(n.data.data)
+    ]).then(([t, n]) => {
+      if (t?.data?.data?.length) setTrending(t.data.data)
+      if (n?.data?.data?.length) setNewArrivals(n.data.data)
     }).finally(() => setLoading(false))
   }, [])
 
@@ -230,102 +184,12 @@ export default function HomePage() {
     <>
       <Ticker />
       <div className="min-h-screen bg-[#f0f2f5]">
-        <HeroCarousel />
+        <BellmakHeroBanner />
         <CategoryStrip />
 
         <div className="max-w-[1440px] mx-auto px-3 py-5 space-y-5">
 
-          {/* Flash Deals */}
-          <div className="bg-white rounded-3xl overflow-hidden shadow-sm border border-gray-100">
-            <div className="relative overflow-hidden bg-gradient-to-r from-red-600 via-red-500 to-orange-500 px-5 py-4">
-              <div className="absolute -right-6 -top-6 w-28 h-28 bg-white/10 rounded-full" />
-              <div className="relative flex items-center justify-between gap-3 flex-wrap">
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 bg-white/20 rounded-2xl flex items-center justify-center">
-                    <Flame size={18} className="text-white" />
-                  </div>
-                  <div>
-                    <p className="text-[9px] font-black text-red-200 uppercase tracking-widest">Limited Time</p>
-                    <h2 className="font-black text-white text-lg leading-none">Flash Deals</h2>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <p className="text-red-200 text-xs font-bold hidden sm:block">Ends in:</p>
-                  <Countdown />
-                  <Link href="/products?discount=20"
-                    className="flex items-center gap-1.5 bg-white text-red-600 font-black text-xs px-4 py-2 rounded-xl hover:bg-red-50 transition-colors">
-                    All Deals <ArrowRight size={12} />
-                  </Link>
-                </div>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 md:grid-cols-4">
-              <DealBox title="Electronics Up to 70% off" sub="Mobiles, Laptops & more" href="/category/electronics" color="bg-blue-50"   emoji="💻" />
-              <DealBox title="Fashion Min. 50% off"       sub="Top brands & trends"    href="/category/fashion"     color="bg-pink-50"   emoji="👗" />
-              <DealBox title="Home from ₹199"            sub="Kitchen, decor & more"  href="/category/home-kitchen"color="bg-green-50"  emoji="🏠" />
-              <DealBox title="Beauty & Skincare"         sub="Genuine products only"  href="/category/beauty"      color="bg-purple-50" emoji="💄" />
-            </div>
-          </div>
-
-          {/* Featured Products */}
-          <div className="bg-white rounded-3xl shadow-sm overflow-hidden border border-gray-100">
-            <SectionHeader
-              icon={<Star size={16} className="text-white fill-white" />}
-              label="Handpicked For You"
-              title="Featured Products"
-              href="/products"
-              badge="HOT 🔥"
-            />
-            <ProductShelf products={featured} loading={loading} count={10} />
-          </div>
-
-          {/* Promo Banners */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Link href="/products?discount=30"
-              className="md:col-span-2 relative overflow-hidden rounded-3xl h-40 flex items-center px-8 group"
-              style={{ background:'linear-gradient(135deg,#1a1a2e 0%,#0f3460 60%,#1a1a4e 100%)' }}>
-              <div className="absolute right-0 top-0 bottom-0 w-48 flex items-center justify-center">
-                <span className="text-[110px] opacity-10 group-hover:opacity-20 group-hover:scale-110 transition-all duration-500 select-none">📱</span>
-              </div>
-              <div className="relative z-10">
-                <div className="inline-flex items-center gap-1.5 bg-[#F97316]/20 border border-[#F97316]/30 text-[#F97316] text-[10px] font-black px-3 py-1 rounded-full mb-3">
-                  <Zap size={9} fill="currentColor" /> TODAY ONLY
-                </div>
-                <h3 className="text-2xl font-black text-white leading-tight mb-1">
-                  Mobiles <span className="text-[#F97316]">Up to 40% Off</span>
-                </h3>
-                <p className="text-gray-400 text-xs flex items-center gap-1.5">
-                  <Clock size={10} /> Limited stock available
-                </p>
-              </div>
-            </Link>
-            <div className="flex flex-col gap-4">
-              <Link href="/sell"
-                className="relative overflow-hidden rounded-3xl flex-1 flex items-center px-6 group bg-gradient-to-r from-[#F97316] to-orange-500 min-h-[72px]">
-                <div className="absolute right-4 text-5xl opacity-20 group-hover:scale-110 transition-transform select-none">🚀</div>
-                <div className="relative z-10">
-                  <p className="text-[9px] font-black text-white/70 uppercase tracking-widest">Zero Investment</p>
-                  <h3 className="font-black text-white text-base leading-tight">Start Selling</h3>
-                </div>
-              </Link>
-              <Link href="/live"
-                className="relative overflow-hidden rounded-3xl flex-1 flex items-center px-6 group bg-gradient-to-r from-red-600 to-rose-500 min-h-[72px]">
-                <div className="absolute right-4 text-5xl opacity-20 group-hover:scale-110 transition-transform select-none">🎥</div>
-                <div className="relative z-10 flex items-center gap-3">
-                  <span className="relative flex h-2.5 w-2.5 flex-shrink-0">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75" />
-                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-white" />
-                  </span>
-                  <div>
-                    <p className="text-[9px] font-black text-white/70 uppercase tracking-widest">Live Now</p>
-                    <h3 className="font-black text-white text-base leading-tight">Watch Live</h3>
-                  </div>
-                </div>
-              </Link>
-            </div>
-          </div>
-
-          {/* New Arrivals — sorted by createdAt desc */}
+          {/* New Arrivals */}
           <div className="bg-white rounded-3xl shadow-sm overflow-hidden border border-gray-100">
             <SectionHeader
               icon={<Sparkles size={16} className="text-white" />}
@@ -359,7 +223,6 @@ export default function HomePage() {
               </div>
             </div>
 
-            {/* Trending Now */}
             <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden lg:col-span-2">
               <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
                 <div className="flex items-center gap-2.5">
@@ -421,31 +284,6 @@ export default function HomePage() {
                     </Link>
                   )
                 })}
-              </div>
-            </div>
-          </div>
-
-          {/* Live Shopping */}
-          <div className="rounded-3xl overflow-hidden relative bg-gradient-to-r from-red-600 via-red-500 to-[#F97316] shadow-lg shadow-red-200">
-            <div className="relative z-10 p-5 md:p-7 flex flex-col md:flex-row items-center justify-between gap-5">
-              <div className="flex items-center gap-4">
-                <div className="w-13 h-13 bg-white/20 rounded-2xl flex items-center justify-center flex-shrink-0 border border-white/20 p-3">
-                  <Radio size={22} className="text-white" />
-                </div>
-                <div className="text-white">
-                  <h3 className="text-xl md:text-2xl font-black leading-tight">Live Shopping Events</h3>
-                  <p className="text-red-100 text-xs mt-0.5">Watch. Discover. Buy — Exclusive live-only prices!</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3 flex-shrink-0">
-                <Link href="/live"
-                  className="flex items-center gap-2 bg-white text-red-600 font-black text-sm px-6 py-3 rounded-2xl hover:scale-105 transition-transform shadow-lg">
-                  <Play size={14} fill="currentColor" /> Watch Live
-                </Link>
-                <Link href="/live/seller"
-                  className="flex items-center gap-2 bg-white/20 hover:bg-white/30 border border-white/20 text-white font-bold text-sm px-5 py-3 rounded-2xl transition-all">
-                  Go Live
-                </Link>
               </div>
             </div>
           </div>
