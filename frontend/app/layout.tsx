@@ -9,6 +9,9 @@ import AdminSwitcher from '@/components/AdminSwitcher'
 export const metadata: Metadata = {
   title: 'BELLMAK - India Ka Apna Bazaar',
   description: 'Shop millions of products at best prices. Free delivery above ₹499.',
+  verification: {
+    google: 'UDjmoLc_FmiWR_y--mTCrxZnd1MCkcntP062XSkOTuA',
+  },
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
