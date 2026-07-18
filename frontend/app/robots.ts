@@ -7,6 +7,6 @@ export default function robots(): MetadataRoute.Robots {
       allow: '/',
       disallow: ['/admin', '/account', '/seller', '/checkout', '/cart'],
     },
-    sitemap: 'https://bellmak-xl3b.vercel.app/sitemap.xml',
+    sitemap: 'https://bellmak.vercel.app/sitemap.xml',
   }
 }

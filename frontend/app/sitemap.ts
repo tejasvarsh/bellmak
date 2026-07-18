@@ -1,7 +1,7 @@
 import { MetadataRoute } from 'next'
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const baseUrl = 'https://bellmak-xl3b.vercel.app'
+  const baseUrl = 'https://bellmak.vercel.app'
 
   const staticRoutes = [
     '', '/products', '/category', '/about', '/contact',
